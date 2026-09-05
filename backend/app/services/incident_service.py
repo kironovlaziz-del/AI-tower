@@ -1,0 +1,71 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from fastapi import HTTPException, status
+from typing import List
+from datetime import datetime
+from app.models.ai_incident import AIIncident
+from app.schemas.incident import IncidentCreate, IncidentUpdate
+
+class IncidentService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+    
+    async def create_incident(self, org_id: int, data: IncidentCreate) -> AIIncident:
+        incident = AIIncident(
+            org_id=org_id,
+            request_id=data.request_id,
+            severity=data.severity,
+            category=data.category,
+            summary=data.summary,
+            impact=data.impact,
+            status="open"
+        )
+        self.db.add(incident)
+        await self.db.commit()
+        await self.db.refresh(incident)
+        return incident
+    
+    async def get_incident(self, incident_id: int, org_id: int) -> AIIncident:
+        result = await self.db.execute(
+            select(AIIncident).where(
+                AIIncident.id == incident_id,
+                AIIncident.org_id == org_id
+            )
+        )
+        incident = result.scalar_one_or_none()
+        if not incident:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Incident not found"
+            )
+        return incident
+    
+    async def list_incidents(self, org_id: int) -> List[AIIncident]:
+        result = await self.db.execute(
+            select(AIIncident).where(AIIncident.org_id == org_id).order_by(AIIncident.created_at.desc())
+        )
+        return list(result.scalars().all())
+    
+    async def update_incident(
+        self, incident_id: int, org_id: int, data: IncidentUpdate
+    ) -> AIIncident:
+        incident = await self.get_incident(incident_id, org_id)
+        
+        if data.severity is not None:
+            incident.severity = data.severity
+        if data.category is not None:
+            incident.category = data.category
+        if data.summary is not None:
+            incident.summary = data.summary
+        if data.impact is not None:
+            incident.impact = data.impact
+        if data.root_cause is not None:
+            incident.root_cause = data.root_cause
+        if data.status is not None:
+            incident.status = data.status
+            if data.status == "resolved":
+                incident.resolved_at = datetime.utcnow()
+        
+        await self.db.commit()
+        await self.db.refresh(incident)
+        return incident
