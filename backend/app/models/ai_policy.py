@@ -26,3 +26,4 @@ class AIPolicyVersion(Base):
     approved_at = Column(DateTime(timezone=True))
 
     policy = relationship("AIPolicy", backref="versions")
+

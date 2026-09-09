@@ -69,3 +69,4 @@ class IncidentService:
         await self.db.commit()
         await self.db.refresh(incident)
         return incident
+

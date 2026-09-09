@@ -10,3 +10,4 @@ class AIApproval(Base):
     decision = Column(String(20))  # approved, rejected
     reason = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+

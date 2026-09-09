@@ -36,3 +36,4 @@ class PolicyVersionOut(BaseModel):
 
 class PolicyApprove(BaseModel):
     approved: bool = True
+

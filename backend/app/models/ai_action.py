@@ -13,3 +13,4 @@ class AIAction(Base):
     status = Column(String(50), default="pending")
     approved_by = Column(Integer, ForeignKey("users.id"))
     executed_at = Column(DateTime(timezone=True))
+

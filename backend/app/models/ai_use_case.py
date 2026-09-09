@@ -15,3 +15,4 @@ class AIUseCase(Base):
     approved_policy_version_id = Column(Integer, ForeignKey("ai_policy_versions.id"))
     status = Column(String(50), default="active")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+

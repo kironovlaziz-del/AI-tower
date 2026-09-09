@@ -4,6 +4,7 @@ from typing import List
 from app.core.database import get_db
 from app.schemas.policy import PolicyCreate, PolicyOut, PolicyVersionCreate, PolicyVersionOut
 from app.services.policy_service import PolicyService
+from app.services.audit_service import AuditService
 from app.models.user import User
 from app.api.deps import get_current_user
 
@@ -16,7 +17,12 @@ async def create_policy(
     current_user: User = Depends(get_current_user)
 ):
     service = PolicyService(db)
-    return await service.create_policy(current_user.org_id, policy_data, current_user.id)
+    policy = await service.create_policy(current_user.org_id, policy_data, current_user.id)
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "policy", policy.id, "created",
+        {"name": policy.name},
+    )
+    return policy
 
 @router.get("/", response_model=List[PolicyOut])
 async def list_policies(
@@ -43,9 +49,14 @@ async def create_policy_version(
     current_user: User = Depends(get_current_user)
 ):
     service = PolicyService(db)
-    return await service.create_policy_version(
+    version = await service.create_policy_version(
         policy_id, current_user.org_id, version_data, current_user.id
     )
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "policy_version", version.id, "created",
+        {"policy_id": policy_id, "version": version.version, "rules_json": version.rules_json},
+    )
+    return version
 
 @router.get("/{policy_id}/versions", response_model=List[PolicyVersionOut])
 async def get_policy_versions(
@@ -64,6 +75,11 @@ async def approve_policy_version(
     current_user: User = Depends(get_current_user)
 ):
     service = PolicyService(db)
-    return await service.approve_policy_version(
+    version = await service.approve_policy_version(
         policy_id, version_id, current_user.org_id, current_user.id
     )
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "policy_version", version.id, "approved",
+        {"policy_id": policy_id, "version": version.version},
+    )
+    return version

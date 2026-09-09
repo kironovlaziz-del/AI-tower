@@ -14,3 +14,4 @@ class OrganizationOut(OrganizationBase):
     
     class Config:
         from_attributes = True
+

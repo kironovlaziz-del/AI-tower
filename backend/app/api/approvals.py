@@ -4,6 +4,8 @@ from typing import List
 from app.core.database import get_db
 from app.schemas.approval import ApprovalCreate, ApprovalDecision, ApprovalOut
 from app.services.approval_service import ApprovalService
+from app.services.audit_service import AuditService
+from app.services import notification_service
 from app.models.user import User
 from app.api.deps import get_current_user
 
@@ -16,7 +18,18 @@ async def create_approval(
     current_user: User = Depends(get_current_user)
 ):
     service = ApprovalService(db)
-    return await service.create_approval(current_user.org_id, data)
+    approval = await service.create_approval(current_user.org_id, data)
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "approval", approval.id, "created",
+        {"request_id": approval.request_id, "approver_user_id": approval.approver_user_id},
+    )
+    await notification_service.notify(
+        db, current_user.org_id, "approval_pending",
+        "Требуется согласование запроса",
+        f"Запрос #{approval.request_id} ожидает согласования.",
+        {"request_id": approval.request_id, "approval_id": approval.id},
+    )
+    return approval
 
 @router.get("/", response_model=List[ApprovalOut])
 async def list_approvals(
@@ -34,4 +47,9 @@ async def make_decision(
     current_user: User = Depends(get_current_user)
 ):
     service = ApprovalService(db)
-    return await service.make_decision(approval_id, current_user.org_id, data)
+    approval = await service.make_decision(approval_id, current_user.org_id, data)
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "approval", approval.id, data.decision,
+        {"request_id": approval.request_id, "reason": data.reason},
+    )
+    return approval

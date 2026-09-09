@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 class RequestCreate(BaseModel):
     use_case_id: int
@@ -19,6 +19,7 @@ class RequestOut(BaseModel):
     purpose: Optional[str]
     risk_level: str
     status: str
+    firewall_flags: Optional[List[str]] = None
     created_at: datetime
     
     class Config:

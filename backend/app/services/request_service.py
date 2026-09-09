@@ -8,6 +8,10 @@ from app.models.ai_use_case import AIUseCase
 from app.models.ai_provider import AIProvider
 from app.models.ai_policy import AIPolicyVersion
 from app.schemas.request import RequestCreate
+from app.services import prompt_firewall
+from app.services import provider_adapters
+from app.services.provider_adapters import ProviderCallError
+from app.core.crypto import decrypt_secret
 
 class RequestService:
     def __init__(self, db: AsyncSession):
@@ -43,12 +47,24 @@ class RequestService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Provider not found"
             )
+
+        # --- Connections gate ---
+        # A disabled connection is a hard stop: no request should ever reach
+        # the firewall or policy engine on a provider that's been switched
+        # off from Connections / Vendor Risk Desk.
+        if provider.status != "active":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"The '{provider.name}' connection is currently disabled and cannot accept new requests.",
+            )
         
         # Determine risk level from use case
         risk_level = use_case.risk_level
         
-        # Check policy if use case has approved policy
-        requires_approval = False
+        # Load the policy version linked to this use case, if any - it drives
+        # both the Prompt Firewall's blocked-terms list and the approval
+        # requirement below.
+        policy_version = None
         if use_case.approved_policy_version_id:
             result = await self.db.execute(
                 select(AIPolicyVersion).where(
@@ -56,12 +72,37 @@ class RequestService:
                 )
             )
             policy_version = result.scalar_one_or_none()
-            if policy_version and policy_version.rules_json:
-                rules = policy_version.rules_json
-                effect = rules.get("effect")
-                if effect == "require_approval":
-                    requires_approval = True
-        
+
+        rules = (policy_version.rules_json if policy_version else {}) or {}
+
+        # --- Prompt Firewall ---
+        # Runs before anything else is persisted: a blocked prompt never
+        # reaches the policy engine or a provider.
+        firewall_result = prompt_firewall.scan(
+            data.input_text, blocked_terms=rules.get("blocked_terms")
+        )
+
+        if firewall_result.blocked:
+            request = AIRequest(
+                org_id=org_id,
+                use_case_id=data.use_case_id,
+                user_id=user_id,
+                provider_id=data.provider_id,
+                input_text=data.input_text,
+                masked_input_text=None,
+                purpose=data.purpose,
+                risk_level=risk_level,
+                status="blocked",
+                firewall_flags=firewall_result.flags,
+            )
+            self.db.add(request)
+            await self.db.commit()
+            await self.db.refresh(request)
+            return request
+
+        # --- Policy Engine ---
+        requires_approval = rules.get("effect") == "require_approval"
+
         # Create request
         request = AIRequest(
             org_id=org_id,
@@ -69,15 +110,18 @@ class RequestService:
             user_id=user_id,
             provider_id=data.provider_id,
             input_text=data.input_text,
+            masked_input_text=firewall_result.masked_text,
             purpose=data.purpose,
             risk_level=risk_level,
-            status="pending_approval" if requires_approval else "pending"
+            status="pending_approval" if requires_approval else "pending",
+            firewall_flags=firewall_result.flags,
         )
         self.db.add(request)
         await self.db.commit()
         await self.db.refresh(request)
         
-        # If no approval required, simulate provider call
+        # If no approval required, process it now (real provider call, or a
+        # clearly-flagged mock if no credentials are configured yet).
         if not requires_approval:
             await self.process_request(request.id, org_id)
             await self.db.refresh(request)
@@ -97,19 +141,57 @@ class RequestService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Request not found"
             )
-        
-        # Mock provider response
-        response = AIResponse(
-            request_id=request.id,
-            provider_response_json={"mock": True},
-            response_text=f"Mock response for: {request.input_text[:50]}...",
-            confidence_score=0.95
-        )
+
+        provider = None
+        if request.provider_id:
+            provider_result = await self.db.execute(
+                select(AIProvider).where(AIProvider.id == request.provider_id)
+            )
+            provider = provider_result.scalar_one_or_none()
+
+        # The provider only ever sees the masked text, never the raw input_text.
+        prompt = request.masked_input_text or request.input_text or ""
+
+        api_key: Optional[str] = None
+        if provider and provider.api_key_encrypted:
+            try:
+                api_key = decrypt_secret(provider.api_key_encrypted)
+            except ValueError:
+                api_key = None
+
+        if provider and api_key:
+            try:
+                response_text, raw = await provider_adapters.call_provider(
+                    provider.type, api_key, provider.base_url, provider.default_model, prompt
+                )
+                response = AIResponse(
+                    request_id=request.id,
+                    provider_response_json=raw if isinstance(raw, dict) else {"raw": str(raw)},
+                    response_text=response_text,
+                    confidence_score=None,
+                )
+                request.status = "completed"
+            except ProviderCallError as exc:
+                response = AIResponse(
+                    request_id=request.id,
+                    provider_response_json={"error": str(exc)},
+                    response_text=f"[connection error] {exc}",
+                    confidence_score=None,
+                )
+                request.status = "failed"
+        else:
+            # No credentials configured on this connection yet - keep the
+            # platform testable without live keys, but say so plainly rather
+            # than presenting a fake answer as real.
+            response = AIResponse(
+                request_id=request.id,
+                provider_response_json={"mock": True},
+                response_text=f"[mock - no API key configured for this connection] {prompt[:80]}",
+                confidence_score=0.95,
+            )
+            request.status = "completed"
+
         self.db.add(response)
-        
-        # Update request status
-        request.status = "completed"
-        
         await self.db.commit()
         await self.db.refresh(response)
         
@@ -135,3 +217,11 @@ class RequestService:
             select(AIRequest).where(AIRequest.org_id == org_id).order_by(AIRequest.created_at.desc())
         )
         return list(result.scalars().all())
+
+    async def get_response(self, request_id: int, org_id: int) -> Optional[AIResponse]:
+        # Ensure the request belongs to this org
+        await self.get_request(request_id, org_id)
+        result = await self.db.execute(
+            select(AIResponse).where(AIResponse.request_id == request_id)
+        )
+        return result.scalar_one_or_none()

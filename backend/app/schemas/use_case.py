@@ -28,3 +28,4 @@ class UseCaseUpdate(BaseModel):
     allowed_providers_json: Optional[Dict[str, Any]] = None
     approved_policy_version_id: Optional[int] = None
     status: Optional[str] = None
+

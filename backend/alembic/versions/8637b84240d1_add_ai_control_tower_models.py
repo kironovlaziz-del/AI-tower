@@ -172,3 +172,4 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_ai_policies_id'), table_name='ai_policies')
     op.drop_table('ai_policies')
     # ### end Alembic commands ###
+

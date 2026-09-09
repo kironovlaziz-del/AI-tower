@@ -66,3 +66,4 @@ class UseCaseService:
         await self.db.commit()
         await self.db.refresh(use_case)
         return use_case
+

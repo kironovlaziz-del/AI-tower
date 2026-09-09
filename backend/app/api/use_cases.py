@@ -4,6 +4,7 @@ from typing import List
 from app.core.database import get_db
 from app.schemas.use_case import UseCaseCreate, UseCaseOut, UseCaseUpdate
 from app.services.use_case_service import UseCaseService
+from app.services.audit_service import AuditService
 from app.models.user import User
 from app.api.deps import get_current_user
 
@@ -16,7 +17,12 @@ async def create_use_case(
     current_user: User = Depends(get_current_user)
 ):
     service = UseCaseService(db)
-    return await service.create_use_case(current_user.org_id, data)
+    use_case = await service.create_use_case(current_user.org_id, data)
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "use_case", use_case.id, "created",
+        {"name": use_case.name, "risk_level": use_case.risk_level},
+    )
+    return use_case
 
 @router.get("/", response_model=List[UseCaseOut])
 async def list_use_cases(
@@ -43,4 +49,9 @@ async def update_use_case(
     current_user: User = Depends(get_current_user)
 ):
     service = UseCaseService(db)
-    return await service.update_use_case(use_case_id, current_user.org_id, data)
+    use_case = await service.update_use_case(use_case_id, current_user.org_id, data)
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "use_case", use_case.id, "updated",
+        data.model_dump(exclude_unset=True),
+    )
+    return use_case

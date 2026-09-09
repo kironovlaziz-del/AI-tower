@@ -70,6 +70,16 @@ class ApprovalService:
         
         await self.db.commit()
         await self.db.refresh(approval)
+
+        # An approved request still needs to actually run - this used to be
+        # a silent no-op (status flipped to "approved" and nothing else ever
+        # happened, so approved requests never got a response). Process it
+        # now that a human has signed off.
+        if request and data.decision == "approved":
+            from app.services.request_service import RequestService
+
+            await RequestService(self.db).process_request(request.id, org_id)
+
         return approval
     
     async def list_approvals(self, org_id: int) -> List[AIApproval]:

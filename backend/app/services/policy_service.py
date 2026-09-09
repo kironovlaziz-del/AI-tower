@@ -139,3 +139,4 @@ class PolicyService:
             ).order_by(AIPolicyVersion.version.desc()).limit(1)
         )
         return result.scalar_one_or_none()
+

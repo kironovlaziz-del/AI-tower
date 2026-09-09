@@ -6,6 +6,7 @@ from app.core.security import get_password_hash
 from app.schemas.user import UserCreate, UserOut
 from app.models.user import User
 from app.models.organization import Organization
+from app.services.audit_service import AuditService
 from app.api.deps import get_current_user
 
 router = APIRouter()
@@ -39,7 +40,16 @@ async def register(
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    
+
+    await AuditService(db).log(
+        org.id, user.id, "organization", org.id, "created",
+        {"org_name": org.name},
+    )
+    await AuditService(db).log(
+        org.id, user.id, "user", user.id, "registered",
+        {"email": user.email, "role": user.role.value if hasattr(user.role, "value") else user.role},
+    )
+
     return user
 
 @router.get("/me", response_model=UserOut)

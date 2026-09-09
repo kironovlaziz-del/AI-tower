@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -14,5 +15,6 @@ class AIRequest(Base):
     masked_input_text = Column(Text)
     purpose = Column(String(255))
     risk_level = Column(String(20), default="low")
-    status = Column(String(50), default="pending")  # pending, approved, rejected, completed, failed
+    status = Column(String(50), default="pending")  # pending, pending_approval, blocked, approved, rejected, completed, failed
+    firewall_flags = Column(JSONB)  # e.g. ["masked:email", "blocked_term:foo"]
     created_at = Column(DateTime(timezone=True), server_default=func.now())
