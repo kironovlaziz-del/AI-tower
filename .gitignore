@@ -11,3 +11,6 @@ frontend/.env.local
 
 # misc
 .DS_Store
+ai-control-tower.zip
+all_code.txt
+*.zip
