@@ -14,3 +14,7 @@ frontend/.env.local
 ai-control-tower.zip
 all_code.txt
 *.zip
+*.log
+backend.log
+frontend.log
+celery.log
