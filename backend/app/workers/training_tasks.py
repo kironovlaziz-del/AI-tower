@@ -403,6 +403,10 @@ def train_model(job_id: int) -> None:
         job = db.get(TrainingJob, job_id)
         if not job:
             return
+        if job.status == "cancelled":
+            # Revoked while still queued - the API already set the final
+            # status, nothing to do here.
+            return
 
         job.status = "running"
         job.started_at = datetime.now(timezone.utc)

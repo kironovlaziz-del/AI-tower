@@ -50,6 +50,34 @@ async def get_training_job(
     return await service.get_job(job_id, current_user.org_id)
 
 
+@router.post("/{job_id}/cancel", response_model=TrainingJobOut)
+async def cancel_training_job(
+    job_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    service = TrainingService(db)
+    job = await service.cancel_job(job_id, current_user.org_id)
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "training_job", job.id, "cancelled", None,
+    )
+    return job
+
+
+@router.post("/{job_id}/retry", response_model=TrainingJobOut)
+async def retry_training_job(
+    job_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    service = TrainingService(db)
+    job = await service.retry_job(job_id, current_user.org_id)
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "training_job", job.id, "retried", None,
+    )
+    return job
+
+
 @router.post("/{job_id}/predict", response_model=PredictResponse)
 async def predict(
     job_id: int,

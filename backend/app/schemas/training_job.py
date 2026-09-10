@@ -10,8 +10,9 @@ class TrainingJobCreate(BaseModel):
         "tabular_classification",
         "tabular_regression",
         "transformer_text_classification",
+        "transformer_text_generation",
     ]
-    target_column: str
+    target_column: Optional[str] = None  # required for tabular_* and transformer_text_classification; unused for generation
     # sklearn track (tabular_*)
     algorithm: Optional[
         Literal[
@@ -21,7 +22,7 @@ class TrainingJobCreate(BaseModel):
             "random_forest_regressor",
         ]
     ] = None
-    # transformer track (transformer_text_classification)
+    # transformer track (transformer_text_classification / transformer_text_generation)
     base_model: Optional[str] = None
     hyperparameters: Optional[Dict[str, Any]] = None
 
@@ -32,12 +33,13 @@ class TrainingJobOut(BaseModel):
     dataset_id: int
     name: str
     task_type: str
-    target_column: str
+    target_column: Optional[str]
     algorithm: Optional[str]
     base_model: Optional[str]
     hyperparameters_json: Optional[Dict[str, Any]]
     feature_columns_json: Optional[List[str]]
     status: str
+    celery_task_id: Optional[str]
     metrics_json: Optional[Dict[str, Any]]
     error_message: Optional[str]
     created_by: Optional[int]

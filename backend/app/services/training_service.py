@@ -13,6 +13,7 @@ from app.schemas.training_job import TrainingJobCreate
 from app.services import compute_detector, transformer_models
 
 SUPPORTED_DATASET_FORMATS = {"csv", "tsv"}
+TRANSFORMER_TASK_TYPES = {"transformer_text_classification", "transformer_text_generation"}
 
 
 class TrainingService:
@@ -45,21 +46,35 @@ class TrainingService:
             )
 
         hyperparameters = data.hyperparameters or {}
+        target_column = data.target_column
 
-        if data.task_type == "transformer_text_classification":
+        if data.task_type in TRANSFORMER_TASK_TYPES:
             if not data.base_model:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="base_model is required for transformer_text_classification.",
+                    detail=f"base_model is required for {data.task_type}.",
                 )
-            if not hyperparameters.get("text_column"):
+            text_column = hyperparameters.get("text_column")
+            if not text_column:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="hyperparameters.text_column is required for transformer_text_classification.",
+                    detail=f"hyperparameters.text_column is required for {data.task_type}.",
                 )
+
+            if data.task_type == "transformer_text_classification" and not target_column:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="target_column (the label column) is required for transformer_text_classification.",
+                )
+            if data.task_type == "transformer_text_generation":
+                # Generation is self-supervised on the text itself - there's
+                # no separate label column, so target_column is just set to
+                # the text column for bookkeeping/display purposes.
+                target_column = text_column
+
             gpu_status = compute_detector.get_status()
             fit = transformer_models.check_model_fit(
-                data.base_model, gpu_status.gpu_available, gpu_status.gpu_vram_free_gb
+                data.base_model, data.task_type, gpu_status.gpu_available, gpu_status.gpu_vram_free_gb
             )
             if not fit["allowed"]:
                 raise HTTPException(
@@ -67,6 +82,11 @@ class TrainingService:
                     detail=fit["reason"] or f"'{data.base_model}' is not allowed on this hardware.",
                 )
         else:
+            if not target_column:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="target_column is required for tabular training tasks.",
+                )
             is_classification = data.task_type == "tabular_classification"
             is_classifier_algo = data.algorithm in (
                 "logistic_regression",
@@ -88,7 +108,7 @@ class TrainingService:
             dataset_id=data.dataset_id,
             name=data.name,
             task_type=data.task_type,
-            target_column=data.target_column,
+            target_column=target_column,
             algorithm=data.algorithm,
             base_model=data.base_model,
             hyperparameters_json=hyperparameters,
@@ -101,7 +121,10 @@ class TrainingService:
 
         # Hand off to the Celery worker by task name only - this process
         # never imports pandas/scikit-learn/torch itself.
-        celery_app.send_task("training.train_model", args=[job.id])
+        result = celery_app.send_task("training.train_model", args=[job.id])
+        job.celery_task_id = result.id
+        await self.db.commit()
+        await self.db.refresh(job)
 
         return job
 
@@ -124,6 +147,56 @@ class TrainingService:
             )
         return job
 
+    async def cancel_job(self, job_id: int, org_id: int) -> TrainingJob:
+        from datetime import datetime, timezone
+
+        job = await self.get_job(job_id, org_id)
+        if job.status not in ("queued", "running"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot cancel a job in status '{job.status}'.",
+            )
+
+        if job.celery_task_id:
+            # terminate=True sends SIGKILL to the worker process actually
+            # running this task, if it has started. If it's still queued,
+            # this just marks it revoked so the worker skips it when it
+            # would otherwise pick it up.
+            celery_app.control.revoke(job.celery_task_id, terminate=True, signal="SIGKILL")
+
+        # Set the final status here rather than waiting for the worker to
+        # do it: a terminated process never reaches its own status-update
+        # code, so the job would otherwise be stuck at "running" forever.
+        job.status = "cancelled"
+        job.finished_at = datetime.now(timezone.utc)
+        job.error_message = "Остановлено пользователем."
+        await self.db.commit()
+        await self.db.refresh(job)
+        return job
+
+    async def retry_job(self, job_id: int, org_id: int) -> TrainingJob:
+        job = await self.get_job(job_id, org_id)
+        if job.status not in ("failed", "cancelled"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot retry a job in status '{job.status}'.",
+            )
+
+        job.status = "queued"
+        job.error_message = None
+        job.metrics_json = None
+        job.model_path = None
+        job.feature_columns_json = None
+        job.started_at = None
+        job.finished_at = None
+        await self.db.commit()
+
+        result = celery_app.send_task("training.train_model", args=[job.id])
+        job.celery_task_id = result.id
+        await self.db.commit()
+        await self.db.refresh(job)
+        return job
+
     async def predict(
         self, job_id: int, org_id: int, features: Dict[str, Any]
     ) -> Any:
@@ -139,10 +212,12 @@ class TrainingService:
                 detail="Model artifact is missing on disk.",
             )
 
-        # Both branches below are blocking CPU/GPU work - run off the event
+        # All branches below are blocking CPU/GPU work - run off the event
         # loop so it doesn't stall other requests.
         if job.task_type == "transformer_text_classification":
             return await run_in_threadpool(self._predict_transformer_sync, job.model_path, features)
+        if job.task_type == "transformer_text_generation":
+            return await run_in_threadpool(self._predict_generation_sync, job.model_path, features)
         return await run_in_threadpool(self._predict_sync, job.model_path, features)
 
     @staticmethod
@@ -201,3 +276,28 @@ class TrainingService:
             except IndexError:
                 return predicted_id
         return predicted_id
+
+    @staticmethod
+    def _predict_generation_sync(model_dir: str, features: Dict[str, Any]) -> Any:
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        prompt = features.get("prompt", "")
+        max_new_tokens = int(features.get("max_new_tokens", 50))
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        tokenizer = AutoTokenizer.from_pretrained(model_dir)
+        model = AutoModelForCausalLM.from_pretrained(model_dir).to(device)
+        model.eval()
+
+        inputs = tokenizer(prompt, return_tensors="pt").to(device)
+        with torch.no_grad():
+            output_ids = model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                do_sample=True,
+                top_p=0.9,
+                temperature=0.8,
+                pad_token_id=tokenizer.eos_token_id,
+            )
+        return tokenizer.decode(output_ids[0], skip_special_tokens=True)

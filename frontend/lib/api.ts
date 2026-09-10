@@ -420,6 +420,16 @@ export async function getAllowedModels(taskType: string = "transformer_text_clas
   return data;
 }
 
+export async function cancelTrainingJob(id: number) {
+  const { data } = await api.post<TrainingJob>(`/training-jobs/${id}/cancel`);
+  return data;
+}
+
+export async function retryTrainingJob(id: number) {
+  const { data } = await api.post<TrainingJob>(`/training-jobs/${id}/retry`);
+  return data;
+}
+
 export async function predictWithTrainingJob(
   id: number,
   features: Record<string, unknown>

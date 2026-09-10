@@ -201,6 +201,7 @@ export interface TrainingJob {
   hyperparameters_json?: Record<string, unknown> | null;
   feature_columns_json?: string[] | null;
   status: TrainingJobStatus;
+  celery_task_id?: string | null;
   metrics_json?: Record<string, number> | null;
   error_message?: string | null;
   created_by?: number | null;

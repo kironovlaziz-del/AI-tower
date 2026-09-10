@@ -6,11 +6,11 @@ services:
     container_name: ai_ct_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ai_user
-      POSTGRES_PASSWORD: ai_password
-      POSTGRES_DB: ai_control_tower
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

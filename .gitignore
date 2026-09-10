@@ -18,3 +18,7 @@ all_code.txt
 backend.log
 frontend.log
 celery.log
+.env
+.env.*
+.en
+!.env.example

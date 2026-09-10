@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusPill } from "@/components/Pill";
-import { getTrainingJob, predictWithTrainingJob } from "@/lib/api";
+import { getTrainingJob, predictWithTrainingJob, cancelTrainingJob, retryTrainingJob } from "@/lib/api";
 import type { TrainingJob } from "@/lib/types";
 
 export default function TrainingJobDetailPage() {
@@ -20,6 +20,34 @@ export default function TrainingJobDetailPage() {
   const [prediction, setPrediction] = useState<unknown>(undefined);
   const [predicting, setPredicting] = useState(false);
   const [predictError, setPredictError] = useState<string | null>(null);
+  const [lifecycleBusy, setLifecycleBusy] = useState(false);
+  const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+
+  async function handleCancel() {
+    setLifecycleError(null);
+    setLifecycleBusy(true);
+    try {
+      const updated = await cancelTrainingJob(jobId);
+      setJob(updated);
+    } catch {
+      setLifecycleError("Не удалось остановить обучение.");
+    } finally {
+      setLifecycleBusy(false);
+    }
+  }
+
+  async function handleRetry() {
+    setLifecycleError(null);
+    setLifecycleBusy(true);
+    try {
+      const updated = await retryTrainingJob(jobId);
+      setJob(updated);
+    } catch {
+      setLifecycleError("Не удалось перезапустить обучение.");
+    } finally {
+      setLifecycleBusy(false);
+    }
+  }
 
   function refresh() {
     getTrainingJob(jobId).then((j) => {
@@ -34,7 +62,7 @@ export default function TrainingJobDetailPage() {
     const interval = setInterval(() => {
       getTrainingJob(jobId).then((j) => {
         setJob(j);
-        if (j.status === "completed" || j.status === "failed") {
+        if (j.status === "completed" || j.status === "failed" || j.status === "cancelled") {
           clearInterval(interval);
         }
       });
@@ -126,12 +154,34 @@ export default function TrainingJobDetailPage() {
         </div>
 
         {(job.status === "queued" || job.status === "running") && (
-          <p className="hint-text">
-            Задание выполняется в фоне — страница обновится автоматически по
-            готовности.{" "}
-            {isTransformer &&
-              "Fine-tuning без GPU может занять от нескольких минут до нескольких часов."}
-          </p>
+          <div className="panel" style={{ marginBottom: 20 }}>
+            <div className="panel-body">
+              <p className="hint-text" style={{ marginBottom: 12 }}>
+                Задание выполняется в фоне — страница обновится автоматически по
+                готовности.{" "}
+                {isTransformer &&
+                  "Fine-tuning без GPU может занять от нескольких минут до нескольких часов."}
+              </p>
+              {lifecycleError && <p className="error-text">{lifecycleError}</p>}
+              <button className="btn btn-danger btn-sm" onClick={handleCancel} disabled={lifecycleBusy}>
+                {lifecycleBusy ? "Останавливаем…" : "Остановить обучение"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {(job.status === "failed" || job.status === "cancelled") && (
+          <div className="panel" style={{ marginBottom: 20 }}>
+            <div className="panel-body">
+              {lifecycleError && <p className="error-text">{lifecycleError}</p>}
+              <button className="btn btn-primary btn-sm" onClick={handleRetry} disabled={lifecycleBusy}>
+                {lifecycleBusy ? "Запускаем…" : "Запустить заново"}
+              </button>
+              <span className="hint-text" style={{ marginLeft: 12 }}>
+                Перезапустит с теми же параметрами.
+              </span>
+            </div>
+          </div>
         )}
 
         {job.status === "failed" && (
