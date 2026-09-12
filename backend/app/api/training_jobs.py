@@ -1,14 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from pathlib import Path
+from jose import jwt, JWTError
 import os
 import re
 import tempfile
 import zipfile
+from datetime import datetime, timedelta, timezone
+
 from app.core.database import get_db
+from app.core.config import settings
 from app.schemas.training_job import (
     TrainingJobCreate,
     TrainingJobOut,
@@ -18,9 +22,39 @@ from app.schemas.training_job import (
 from app.services.training_service import TrainingService
 from app.services.audit_service import AuditService
 from app.models.user import User
+from app.models.training_job import TrainingJob
 from app.api.deps import get_current_user
 
 router = APIRouter()
+
+# Short-lived token used for <a href> downloads - an <a> tag cannot send
+# an Authorization header, so we sign a one-shot URL instead.
+DOWNLOAD_TOKEN_TTL_SECONDS = 120
+
+
+def _make_download_token(job_id: int, org_id: int) -> str:
+    payload = {
+        "sub": f"download:{job_id}",
+        "org": org_id,
+        "exp": datetime.now(timezone.utc) + timedelta(seconds=DOWNLOAD_TOKEN_TTL_SECONDS),
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def _verify_download_token(token: str, job_id: int) -> int:
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired download token.",
+        )
+    if payload.get("sub") != f"download:{job_id}":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Download token does not match this job.",
+        )
+    return int(payload["org"])
 
 
 @router.post("/", response_model=TrainingJobOut)
@@ -97,16 +131,40 @@ async def predict(
     return PredictResponse(prediction=prediction)
 
 
-@router.get("/{job_id}/download")
-async def download_model(
+@router.post("/{job_id}/download-token")
+async def issue_download_token(
     job_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """
+    Issue a short-lived, single-purpose JWT that can be used in an <a href>
+    to stream the model file without buffering it in browser memory.
+    """
     service = TrainingService(db)
-    job = await service.get_job(job_id, current_user.org_id)
+    await service.get_job(job_id, current_user.org_id)  # 404 if not ours
+    token = _make_download_token(job_id, current_user.org_id)
+    return {"token": token, "expires_in": DOWNLOAD_TOKEN_TTL_SECONDS}
 
-    if job.status != "completed" or not job.model_path:
+
+@router.get("/{job_id}/download")
+async def download_model(
+    job_id: int,
+    token: str = Query(..., description="Short-lived download token from /download-token"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Streaming download endpoint. The token in the query string replaces
+    the Authorization header so a plain <a href> works, and the file is
+    served by Starlette's FileResponse in chunks - no full-file buffering.
+    """
+    org_id = _verify_download_token(token, job_id)
+
+    result = await db.execute(
+        select_training_job(job_id, org_id)
+    )
+    job = result.scalar_one_or_none()
+    if not job or job.status != "completed" or not job.model_path:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="This training job has no completed model to download.",
@@ -122,22 +180,16 @@ async def download_model(
     safe_name = re.sub(r"[^A-Za-z0-9_.-]", "_", job.name) or f"job_{job.id}"
 
     await AuditService(db).log(
-        current_user.org_id, current_user.id, "training_job", job.id, "downloaded", None,
+        org_id, None, "training_job", job.id, "downloaded", None,
     )
 
     if model_path.is_file():
-        # sklearn track: already a single self-contained .joblib bundle
-        # (model + feature_columns + label_classes).
         return FileResponse(
             path=str(model_path),
             filename=f"{safe_name}.joblib",
             media_type="application/octet-stream",
         )
 
-    # Transformer track: model_path is a directory (weights + tokenizer +
-    # config + meta.json). Zip it on the fly into a temp file and clean up
-    # once the response has been fully sent. For larger GPU-trained models
-    # this can take a few seconds - that's expected.
     tmp_fd, tmp_path_str = tempfile.mkstemp(suffix=".zip")
     os.close(tmp_fd)
     tmp_path = Path(tmp_path_str)
@@ -151,4 +203,13 @@ async def download_model(
         filename=f"{safe_name}.zip",
         media_type="application/zip",
         background=BackgroundTask(lambda: tmp_path.unlink(missing_ok=True)),
+    )
+
+
+# Local helper to keep the import list clean and avoid a top-level circular
+def select_training_job(job_id: int, org_id: int):
+    from sqlalchemy import select
+
+    return select(TrainingJob).where(
+        TrainingJob.id == job_id, TrainingJob.org_id == org_id
     )

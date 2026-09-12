@@ -454,24 +454,28 @@ export async function retryTrainingJob(id: number) {
   return data;
 }
 
+/**
+ * Trigger a streaming download of a training job's model artifact.
+ *
+ * The backend issues a short-lived, single-purpose token via POST
+ * /training-jobs/{id}/download-token, then the browser navigates directly
+ * to the streaming download URL. This keeps large model files out of
+ * JavaScript memory - a 1 GB model would otherwise be buffered twice
+ * (once in axios, once in the resulting Blob).
+ */
 export async function downloadTrainingJobModel(id: number, filenameHint: string) {
-  const response = await api.get(`/training-jobs/${id}/download`, {
-    responseType: "blob",
-  });
-  const disposition = response.headers["content-disposition"] as string | undefined;
-  let filename = filenameHint;
-  if (disposition) {
-    const match = disposition.match(/filename="?([^"]+)"?/);
-    if (match) filename = match[1];
-  }
-  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const { data } = await api.post<{ token: string; expires_in: number }>(
+    `/training-jobs/${id}/download-token`
+  );
+  const url = `${API_BASE_URL}/training-jobs/${id}/download?token=${encodeURIComponent(data.token)}`;
+
+  // Native navigation so the browser streams the response to disk.
   const link = document.createElement("a");
   link.href = url;
-  link.download = filename;
+  link.download = filenameHint;
   document.body.appendChild(link);
   link.click();
   link.remove();
-  window.URL.revokeObjectURL(url);
 }
 
 export async function predictWithTrainingJob(

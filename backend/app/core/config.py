@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     # Required in production.
     ENCRYPTION_KEY: str = ""
 
+    # Optional: new key to rotate to. Set this alongside ENCRYPTION_KEY and
+    # run scripts/rotate_encryption_key.py, then move the new value into
+    # ENCRYPTION_KEY and clear this field. See README for details.
+    ENCRYPTION_KEY_NEW: str = ""
+
     # Notification Service: email is optional
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
