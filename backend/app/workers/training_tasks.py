@@ -34,6 +34,44 @@ def _update_progress(job_id: int, pct: float, stage: str) -> None:
         db.close()
 
 
+
+
+def _maybe_apply_lora(model, hyperparameters: dict):
+    """
+    Wrap a Hugging Face model in a LoRA adapter when hyperparameters.use_lora
+    is true. Returns (model, is_lora). When LoRA is off, returns the model
+    unchanged. The adapter is trained and later merged into the base model
+    before saving (see merge call in _run_transformer_training), so the
+    final artifact is a plain Hugging Face model.
+
+    target_modules is left to peft's default for the architecture unless
+    the user provided an explicit list. Defaults are: query,value for
+    BERT-family encoders; c_attn for GPT-2-family decoders.
+    """
+    if not hyperparameters.get("use_lora"):
+        return model, False
+
+    from peft import LoraConfig, TaskType, get_peft_model
+
+    # TaskType depends on the model class - check via config
+    if model.config.model_type in ("gpt2", "gpt_neo", "gptj", "llama"):
+        task_type = TaskType.CAUSAL_LM
+    else:
+        task_type = TaskType.SEQ_CLS
+
+    target_modules = hyperparameters.get("lora_target_modules")
+    lora_config = LoraConfig(
+        r=int(hyperparameters.get("lora_r", 8)),
+        lora_alpha=int(hyperparameters.get("lora_alpha", 16)),
+        lora_dropout=float(hyperparameters.get("lora_dropout", 0.05)),
+        bias="none",
+        task_type=task_type,
+        target_modules=target_modules,  # None → peft picks defaults
+    )
+    model = get_peft_model(model, lora_config)
+    return model, True
+
+
 # ---------------------------------------------------------------------------
 # Sklearn track
 # ---------------------------------------------------------------------------
@@ -313,9 +351,14 @@ def _run_transformer_training(job: "TrainingJob", dataset: "Dataset") -> None:
 
     _update_progress(job.id, 15.0, "Loading model")
 
-    model = AutoModelForSequenceClassification.from_pretrained(
+    base_model = AutoModelForSequenceClassification.from_pretrained(
         job.base_model, num_labels=num_labels
     ).to(device)
+
+    model, is_lora = _maybe_apply_lora(base_model, hyperparameters)
+    if is_lora:
+        _update_progress(job.id, 17.0, "Applying LoRA adapter")
+        model.print_trainable_parameters()
 
     models_dir = Path(settings.MODELS_DIR) / str(job.org_id) / f"job_{job.id}"
     models_dir.mkdir(parents=True, exist_ok=True)
@@ -391,11 +434,24 @@ def _run_transformer_training(job: "TrainingJob", dataset: "Dataset") -> None:
         "device_used": device.type,
     }
 
+    # Merge the LoRA adapter back into the base weights so the saved
+    # artifact is a plain Hugging Face model - inference code does not
+    # need to know LoRA was ever used.
+    if is_lora:
+        model = model.merge_and_unload()
+
     model.save_pretrained(models_dir)
     tokenizer.save_pretrained(models_dir)
-    (models_dir / "meta.json").write_text(
-        json.dumps({"label_classes": label_classes, "mode": "transformer"})
-    )
+    meta = {"label_classes": label_classes, "mode": "transformer"}
+    if is_lora:
+        meta["lora"] = {
+            "r": int(hyperparameters.get("lora_r", 8)),
+            "alpha": int(hyperparameters.get("lora_alpha", 16)),
+            "dropout": float(hyperparameters.get("lora_dropout", 0.05)),
+            "target_modules": hyperparameters.get("lora_target_modules"),
+            "merged": True,
+        }
+    (models_dir / "meta.json").write_text(json.dumps(meta))
 
     _update_progress(job.id, 100.0, "Completed")
 
@@ -480,9 +536,14 @@ def _run_generation_training(job: "TrainingJob", dataset: "Dataset") -> None:
 
     _update_progress(job.id, 15.0, "Loading model")
 
-    model = AutoModelForCausalLM.from_pretrained(job.base_model)
-    model.resize_token_embeddings(len(tokenizer))
-    model.to(device)
+    base_model = AutoModelForCausalLM.from_pretrained(job.base_model)
+    base_model.resize_token_embeddings(len(tokenizer))
+    base_model.to(device)
+
+    model, is_lora = _maybe_apply_lora(base_model, hyperparameters)
+    if is_lora:
+        _update_progress(job.id, 17.0, "Applying LoRA adapter")
+        model.print_trainable_parameters()
 
     models_dir = Path(settings.MODELS_DIR) / str(job.org_id) / f"job_{job.id}"
     models_dir.mkdir(parents=True, exist_ok=True)
@@ -556,9 +617,23 @@ def _run_generation_training(job: "TrainingJob", dataset: "Dataset") -> None:
         "device_used": device.type,
     }
 
+    # Merge LoRA back into the base weights so the artifact is a standard
+    # Hugging Face causal LM.
+    if is_lora:
+        model = model.merge_and_unload()
+
     model.save_pretrained(models_dir)
     tokenizer.save_pretrained(models_dir)
-    (models_dir / "meta.json").write_text(json.dumps({"mode": "transformer_generation"}))
+    meta = {"mode": "transformer_generation"}
+    if is_lora:
+        meta["lora"] = {
+            "r": int(hyperparameters.get("lora_r", 8)),
+            "alpha": int(hyperparameters.get("lora_alpha", 16)),
+            "dropout": float(hyperparameters.get("lora_dropout", 0.05)),
+            "target_modules": hyperparameters.get("lora_target_modules"),
+            "merged": True,
+        }
+    (models_dir / "meta.json").write_text(json.dumps(meta))
 
     _update_progress(job.id, 100.0, "Completed")
 

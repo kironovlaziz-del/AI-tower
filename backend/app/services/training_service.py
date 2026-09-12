@@ -68,6 +68,70 @@ def _load_generator(model_dir: str):
 
 
 
+# ---------------------------------------------------------------------------
+# LoRA parameter validation
+# ---------------------------------------------------------------------------
+
+LORA_DEFAULT_R = 8
+LORA_DEFAULT_ALPHA = 16
+LORA_DEFAULT_DROPOUT = 0.05
+
+
+def _validate_lora_params(hyperparameters: dict) -> dict:
+    """
+    Normalise and validate LoRA hyperparameters. Returns a copy with
+    defaults filled in. Raises HTTPException(400) on out-of-range values
+    so the user gets an immediate response instead of a failed training
+    job 10 minutes later.
+    """
+    from fastapi import HTTPException, status
+
+    if not hyperparameters.get("use_lora"):
+        return hyperparameters
+
+    h = dict(hyperparameters)
+
+    r = int(h.get("lora_r", LORA_DEFAULT_R))
+    if r < 1 or r > 256:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="lora_r must be between 1 and 256",
+        )
+    h["lora_r"] = r
+
+    alpha = int(h.get("lora_alpha", LORA_DEFAULT_ALPHA))
+    if alpha < 1 or alpha > 512:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="lora_alpha must be between 1 and 512",
+        )
+    h["lora_alpha"] = alpha
+
+    dropout = float(h.get("lora_dropout", LORA_DEFAULT_DROPOUT))
+    if dropout < 0 or dropout > 0.9:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="lora_dropout must be between 0 and 0.9",
+        )
+    h["lora_dropout"] = dropout
+
+    # target_modules is optional; when provided it must be a list of
+    # non-empty strings. When omitted, peft picks task-appropriate modules
+    # automatically (query/value for BERT-family, c_attn for GPT-2).
+    tm = h.get("lora_target_modules")
+    if tm is not None:
+        if not isinstance(tm, list) or not all(
+            isinstance(x, str) and x.strip() for x in tm
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="lora_target_modules must be a list of non-empty strings",
+            )
+        h["lora_target_modules"] = [x.strip() for x in tm]
+
+    return h
+
+
 class TrainingService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -97,7 +161,7 @@ class TrainingService:
                 ),
             )
 
-        hyperparameters = data.hyperparameters or {}
+        hyperparameters = _validate_lora_params(data.hyperparameters or {})
         target_column = data.target_column
 
         if data.task_type in TRANSFORMER_TASK_TYPES:
