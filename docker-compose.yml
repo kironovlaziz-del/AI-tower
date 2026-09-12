@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   db:
@@ -23,11 +22,19 @@ services:
     image: redis:7-alpine
     container_name: ai_ct_redis
     restart: unless-stopped
-    command: redis-server --requirepass "$REDIS_PASSWORD"
+    # AOF persists every write to disk, so queued Celery tasks survive
+    # a Redis restart. Without it, `docker compose restart redis` silently
+    # drops the entire task queue.
+    command: redis-server --requirepass "$REDIS_PASSWORD" --appendonly yes
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "$REDIS_PASSWORD", "--no-auth-warning", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:

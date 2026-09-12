@@ -6,8 +6,10 @@ DATABASE_URL = f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRE
 
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True,
-    future=True
+    # echo=True dumps every SQL statement to stdout - useful in local dev,
+    # catastrophic in production. Toggle via settings.DEBUG.
+    echo=settings.DEBUG,
+    future=True,
 )
 
 AsyncSessionLocal = async_sessionmaker(

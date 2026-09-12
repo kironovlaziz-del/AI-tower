@@ -16,6 +16,23 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     task_track_started=True,
+
+    # Task time limits protect against a runaway training job that would
+    # otherwise pin the worker indefinitely. soft_limit raises a Python
+    # exception the task can catch; the hard limit sends SIGKILL.
+    task_soft_time_limit=3600,     # 1 hour
+    task_time_limit=3900,          # 1 hour 5 minutes
+
+    # Acknowledging only after the task finishes (instead of when it is
+    # delivered) means a worker that crashes mid-task does not silently
+    # lose the job - the broker will redeliver it.
+    task_acks_late=True,
+    task_reject_on_worker_lost=True,
+
+    # Prefetching a batch of messages is fine for tiny tasks but disastrous
+    # for long-running ones: one worker grabs up to N tasks and blocks the
+    # rest of the queue while it churns through the first one.
+    worker_prefetch_multiplier=1,
 )
 
 from app.workers import training_tasks  # noqa: E402,F401

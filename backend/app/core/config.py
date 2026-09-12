@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     # deployment.
     ENVIRONMENT: str = "development"
 
+    # When true, SQLAlchemy logs every SQL statement. Off by default;
+    # enable for local debugging only.
+    DEBUG: bool = False
+
     # Database
     POSTGRES_USER: str = "ai_user"
     POSTGRES_PASSWORD: str = "ai_password"
