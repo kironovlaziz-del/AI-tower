@@ -2,12 +2,12 @@
 Credential encryption for Connections.
 
 Provider API keys are encrypted at rest with Fernet (symmetric,
-authenticated encryption) using settings.ENCRYPTION_KEY. The key must be a
-generated Fernet key - see app/core/config.py for the generation command.
+authenticated encryption) using settings.ENCRYPTION_KEY.
 
-If ENCRYPTION_KEY is unset (e.g. a fresh dev install that hasn't configured
-it yet), encryption falls back to a fixed local-only key so the app doesn't
-crash - but this is NOT safe for production and a warning is raised.
+In production the key is enforced by config.py, so this module can rely on
+it being present. In development, an empty ENCRYPTION_KEY falls back to a
+fixed local-only key so a fresh checkout still runs - this is NOT safe for
+real credentials and a warning is raised on every encryption call.
 """
 
 import warnings
@@ -24,10 +24,15 @@ _DEV_FALLBACK_KEY = b"KyU3v0Q8yv8dGtj9mZ1cQvV1r7hFZQyq5W3f9pTz9pk="  # local dev
 def _get_fernet() -> Fernet:
     key = settings.ENCRYPTION_KEY.strip()
     if not key:
+        if settings.ENVIRONMENT == "production":
+            # config.py should have refused to start, but be defensive.
+            raise RuntimeError(
+                "ENCRYPTION_KEY is required in production but is empty."
+            )
         warnings.warn(
             "ENCRYPTION_KEY is not set - falling back to an insecure "
-            "development key. Set ENCRYPTION_KEY in .env before storing "
-            "any real provider API keys.",
+            "development key. Set ENCRYPTION_KEY in backend/.env before "
+            "storing any real provider API keys.",
             stacklevel=2,
         )
         return Fernet(_DEV_FALLBACK_KEY)

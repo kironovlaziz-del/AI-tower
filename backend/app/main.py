@@ -15,9 +15,15 @@ from app.api import training_jobs
 from app.api import notification_channels
 
 
+_is_prod = settings.ENVIRONMENT == "production"
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    # OpenAPI schema and the interactive /docs are disabled in production
+    # so the API surface is not publicly enumerable.
+    openapi_url=None if _is_prod else f"{settings.API_V1_STR}/openapi.json",
+    docs_url=None if _is_prod else "/docs",
+    redoc_url=None if _is_prod else "/redoc",
 )
 
 # CORS
