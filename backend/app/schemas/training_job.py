@@ -40,6 +40,7 @@ class TrainingJobOut(BaseModel):
     feature_columns_json: Optional[List[str]]
     status: str
     celery_task_id: Optional[str]
+    model_path: Optional[str]
     metrics_json: Optional[Dict[str, Any]]
     error_message: Optional[str]
     created_by: Optional[int]

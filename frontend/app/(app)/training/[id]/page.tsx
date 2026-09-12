@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusPill } from "@/components/Pill";
-import { getTrainingJob, predictWithTrainingJob, cancelTrainingJob, retryTrainingJob } from "@/lib/api";
+import { getTrainingJob, predictWithTrainingJob, cancelTrainingJob, retryTrainingJob, downloadTrainingJobModel } from "@/lib/api";
 import type { TrainingJob } from "@/lib/types";
 
 export default function TrainingJobDetailPage() {
@@ -22,6 +22,23 @@ export default function TrainingJobDetailPage() {
   const [predictError, setPredictError] = useState<string | null>(null);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const [lifecycleError, setLifecycleError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  async function handleDownload() {
+    if (!job) return;
+    setDownloadError(null);
+    setDownloading(true);
+    try {
+      const ext = job.task_type === "transformer_text_classification" ||
+        job.task_type === "transformer_text_generation" ? "zip" : "joblib";
+      await downloadTrainingJobModel(jobId, `${job.name}.${ext}`);
+    } catch {
+      setDownloadError("Не удалось скачать модель.");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   async function handleCancel() {
     setLifecycleError(null);
@@ -218,6 +235,25 @@ export default function TrainingJobDetailPage() {
                   точности» для генерации текста не существует.
                 </p>
               )}
+            </div>
+          </div>
+        )}
+
+        {job.status === "completed" && job.model_path && (
+          <div className="panel" style={{ marginBottom: 20 }}>
+            <div className="panel-header">
+              <h2>Артефакт модели</h2>
+            </div>
+            <div className="panel-body">
+              <p className="hint-text" style={{ marginBottom: 12 }}>
+                {isTransformer
+                  ? "Скачается ZIP-архив с весами модели, токенизатором и конфигом — всё, что нужно, чтобы загрузить модель через transformers в другом окружении."
+                  : "Скачается .joblib-файл, включающий саму модель, список признаков и (если применимо) кодировщик меток — этого достаточно для загрузки через joblib.load() в другом окружении."}
+              </p>
+              {downloadError && <p className="error-text">{downloadError}</p>}
+              <button className="btn btn-sm" onClick={handleDownload} disabled={downloading}>
+                {downloading ? "Готовим архив…" : "Скачать модель"}
+              </button>
             </div>
           </div>
         )}

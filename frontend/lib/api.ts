@@ -430,6 +430,26 @@ export async function retryTrainingJob(id: number) {
   return data;
 }
 
+export async function downloadTrainingJobModel(id: number, filenameHint: string) {
+  const response = await api.get(`/training-jobs/${id}/download`, {
+    responseType: "blob",
+  });
+  const disposition = response.headers["content-disposition"] as string | undefined;
+  let filename = filenameHint;
+  if (disposition) {
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    if (match) filename = match[1];
+  }
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 export async function predictWithTrainingJob(
   id: number,
   features: Record<string, unknown>
