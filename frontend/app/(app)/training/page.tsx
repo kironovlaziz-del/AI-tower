@@ -1,10 +1,10 @@
 "use client";
 
-import { Form } from "@/components/Form";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
+import { Form } from "@/components/Form";
 import { StatusPill } from "@/components/Pill";
 import {
   createTrainingJob,
@@ -54,6 +54,15 @@ export default function TrainingPage() {
   const [epochs, setEpochs] = useState(1);
   const [batchSize, setBatchSize] = useState(8);
   const [maxLength, setMaxLength] = useState(128);
+
+  // LoRA controls
+  const [useLora, setUseLora] = useState(false);
+  const [loraAdvanced, setLoraAdvanced] = useState(false);
+  const [loraR, setLoraR] = useState(8);
+  const [loraAlpha, setLoraAlpha] = useState(16);
+  const [loraDropout, setLoraDropout] = useState(0.05);
+  const [loraTargets, setLoraTargets] = useState("");
+
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -86,6 +95,7 @@ export default function TrainingPage() {
     setTaskType(next);
     if (next === "tabular_classification" || next === "tabular_regression") {
       setAlgorithm(SKLEARN_ALGORITHMS_BY_TASK[next][0].value);
+      setUseLora(false);
     }
   }
 
@@ -93,33 +103,56 @@ export default function TrainingPage() {
     e.preventDefault();
     setError(null);
     if (!datasetId) {
-      setError(t("datasets.name"));  // fallback — просто не пустое
+      setError(t("datasets.name"));
       return;
     }
     setSubmitting(true);
     try {
+      // Build hyperparameters. For LoRA, include the adapter config; the
+      // backend validates ranges and merges the adapter back on save.
+      const hp: Record<string, unknown> = isTransformer
+        ? {
+            text_column: textColumn,
+            epochs,
+            batch_size: batchSize,
+            max_length: maxLength,
+          }
+        : {};
+
+      if (isTransformer && useLora) {
+        hp.use_lora = true;
+        hp.lora_r = loraR;
+        hp.lora_alpha = loraAlpha;
+        hp.lora_dropout = loraDropout;
+        const targets = loraTargets
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (targets.length > 0) hp.lora_target_modules = targets;
+      }
+
       const job = await createTrainingJob({
         dataset_id: Number(datasetId),
         name,
         task_type: taskType,
         target_column: isGeneration ? undefined : targetColumn,
         algorithm: isTransformer ? undefined : algorithm,
-        base_model: isTransformer ? (customModel || baseModel) : undefined,
-        hyperparameters: isTransformer
-          ? { text_column: textColumn, epochs, batch_size: batchSize, max_length: maxLength }
-          : undefined,
+        base_model: isTransformer ? customModel || baseModel : undefined,
+        hyperparameters: isTransformer ? hp : undefined,
       });
       setShowForm(false);
       setName("");
       setTargetColumn("");
       setTextColumn("");
       setCustomModel("");
+      setUseLora(false);
+      setLoraAdvanced(false);
       router.push(`/training/${job.id}`);
     } catch (err: unknown) {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
           ?.detail;
-      setError(detail || t("training.submit"));  // fallback
+      setError(detail || t("training.submit"));
     } finally {
       setSubmitting(false);
     }
@@ -299,6 +332,95 @@ export default function TrainingPage() {
                           value={maxLength}
                           onChange={(e) => setMaxLength(Number(e.target.value))}
                         />
+                      </div>
+                    </div>
+
+                    {/* LoRA */}
+                    <div className="panel" style={{ marginTop: 8, marginBottom: 8 }}>
+                      <div className="panel-body" style={{ padding: 12 }}>
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            fontSize: 13,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={useLora}
+                            onChange={(e) => setUseLora(e.target.checked)}
+                          />
+                          <strong>{t("training.use_lora")}</strong>
+                        </label>
+                        <p className="hint-text" style={{ marginTop: 6, marginLeft: 24 }}>
+                          {t("training.use_lora_hint")}
+                        </p>
+
+                        {useLora && (
+                          <div style={{ marginTop: 12, marginLeft: 24 }}>
+                            <button
+                              type="button"
+                              className="btn btn-sm"
+                              onClick={() => setLoraAdvanced((v) => !v)}
+                            >
+                              {loraAdvanced ? "▾" : "▸"} {t("training.lora_advanced")}
+                            </button>
+
+                            {loraAdvanced && (
+                              <div style={{ marginTop: 12 }}>
+                                <div className="form-row">
+                                  <div className="field">
+                                    <label htmlFor="lora_r">{t("training.lora_r")}</label>
+                                    <input
+                                      id="lora_r"
+                                      type="number"
+                                      min={1}
+                                      max={256}
+                                      value={loraR}
+                                      onChange={(e) => setLoraR(Number(e.target.value))}
+                                    />
+                                  </div>
+                                  <div className="field">
+                                    <label htmlFor="lora_alpha">{t("training.lora_alpha")}</label>
+                                    <input
+                                      id="lora_alpha"
+                                      type="number"
+                                      min={1}
+                                      max={512}
+                                      value={loraAlpha}
+                                      onChange={(e) => setLoraAlpha(Number(e.target.value))}
+                                    />
+                                  </div>
+                                  <div className="field">
+                                    <label htmlFor="lora_dropout">{t("training.lora_dropout")}</label>
+                                    <input
+                                      id="lora_dropout"
+                                      type="number"
+                                      min={0}
+                                      max={0.9}
+                                      step={0.01}
+                                      value={loraDropout}
+                                      onChange={(e) => setLoraDropout(Number(e.target.value))}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="field">
+                                  <label htmlFor="lora_targets">
+                                    {t("training.lora_target_modules")}
+                                  </label>
+                                  <input
+                                    id="lora_targets"
+                                    value={loraTargets}
+                                    onChange={(e) => setLoraTargets(e.target.value)}
+                                    placeholder={t("training.lora_target_modules_placeholder")}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </>

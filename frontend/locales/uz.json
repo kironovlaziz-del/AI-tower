@@ -294,7 +294,15 @@
       "already_have": "Akkountingiz bormi?",
       "login_link": "Kirish",
       "failed": "Tashkilotni yaratib bo'lmadi."
-    }
+    },
+    "use_lora": "LoRA-dan foydalanish (tejamkor fine-tuning)",
+    "use_lora_hint": "To'liq og'irliklar o'rniga kichik adapter matritsalarini o'qitadi. VRAMni 4-8 baravar kamaytiradi, sifat deyarli yo'qolmaydi. Saqlashda adapter asosiy modelga qo'shiladi.",
+    "lora_r": "Daraja (r)",
+    "lora_alpha": "Alpha",
+    "lora_dropout": "Dropout",
+    "lora_target_modules": "Maqsadli modullar (vergul bilan, bo'sh = avtomatik)",
+    "lora_target_modules_placeholder": "query, value",
+    "lora_advanced": "LoRA qo'shimcha sozlamalari"
   },
   "policies": {
     "title": "Siyosat markazi",

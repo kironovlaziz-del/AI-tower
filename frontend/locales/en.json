@@ -294,7 +294,15 @@
       "already_have": "Already have an account?",
       "login_link": "Sign in",
       "failed": "Could not create organization."
-    }
+    },
+    "use_lora": "Use LoRA (parameter-efficient fine-tuning)",
+    "use_lora_hint": "Trains small adapter matrices instead of full weights. Reduces VRAM by 4-8x with minimal quality loss. The adapter is merged back into the base model on save.",
+    "lora_r": "Rank (r)",
+    "lora_alpha": "Alpha",
+    "lora_dropout": "Dropout",
+    "lora_target_modules": "Target modules (comma-separated, empty = auto)",
+    "lora_target_modules_placeholder": "query, value",
+    "lora_advanced": "Advanced LoRA settings"
   },
   "policies": {
     "title": "Policy Center",
