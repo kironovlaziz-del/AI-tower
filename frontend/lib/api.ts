@@ -262,10 +262,7 @@ export async function listApprovals() {
   return data;
 }
 
-export async function createApproval(payload: {
-  request_id: number;
-  approver_user_id: number;
-}) {
+export async function createApproval(payload: { request_id: number }) {
   const { data } = await api.post<Approval>("/approvals/", payload);
   return data;
 }

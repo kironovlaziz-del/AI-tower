@@ -54,10 +54,11 @@ export default function RequestDetailPage() {
   }, [requestId]);
 
   async function handleRouteToApproval() {
-    if (!user) return;
     setRouting(true);
     try {
-      await createApproval({ request_id: requestId, approver_user_id: user.id });
+      // The approver is chosen server-side (policy or first available
+      // admin/approver in the org) - no user id is sent from the client.
+      await createApproval({ request_id: requestId });
       refresh();
     } finally {
       setRouting(false);
