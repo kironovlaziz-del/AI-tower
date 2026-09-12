@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core import rate_limit
 from app.schemas.user import UserLogin, Token
 from app.models.user import User
+from app.models.organization import Organization
 
 router = APIRouter()
 
@@ -38,19 +39,37 @@ async def login(
         scope="login",
         limit=LOGIN_EMAIL_LIMIT,
         window_seconds=LOGIN_WINDOW_SECONDS,
-        extra_key=user_data.email,
+        extra_key=f"{user_data.org_slug}:{user_data.email}",
     )
 
-    result = await db.execute(
-        select(User).where(User.email == user_data.email)
+    # Resolve the organization first. A wrong slug and a wrong password
+    # both return the same generic 401 so the response does not leak which
+    # organizations exist.
+    org_result = await db.execute(
+        select(Organization).where(
+            Organization.slug == user_data.org_slug.strip().lower()
+        )
     )
-    user = result.scalar_one_or_none()
+    org = org_result.scalar_one_or_none()
+
+    generic_error = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Incorrect organization, email or password",
+    )
+
+    if not org:
+        raise generic_error
+
+    user_result = await db.execute(
+        select(User).where(
+            User.email == user_data.email,
+            User.org_id == org.id,
+        )
+    )
+    user = user_result.scalar_one_or_none()
 
     if not user or not verify_password(user_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-        )
+        raise generic_error
 
     if user.status != "active":
         raise HTTPException(
@@ -62,7 +81,7 @@ async def login(
     # fat-fingered their password a few times is not locked out.
     rate_limit.reset(
         scope="login",
-        extra_key=user_data.email,
+        extra_key=f"{user_data.org_slug}:{user_data.email}",
         ip=rate_limit._client_ip(request),
     )
 

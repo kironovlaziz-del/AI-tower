@@ -42,7 +42,9 @@
     "login_link": "Kirish",
     "login_failed": "Kirib bo'lmadi. Email va parolni tekshiring.",
     "register_failed": "Tashkilotni yaratib bo'lmadi.",
-    "password_hint": "Kamida 6 ta belgi"
+    "password_hint": "Kamida 6 ta belgi",
+    "org_slug": "Tashkilot",
+    "org_slug_hint": "Ro'yxatdan o'tishda tanlagan qisqa identifikatoringiz (masalan, acme)"
   },
   "sidebar": {
     "sections": {
@@ -705,5 +707,22 @@
       "disabled": "faolsiz"
     },
     "admin_only": "Bu sahifa faqat administratorlar uchun."
+  },
+  "register": {
+    "title": "Yangi tashkilot",
+    "org_name": "Tashkilot nomi",
+    "org_name_placeholder": "Acme Corp",
+    "your_name": "Ismingiz",
+    "your_name_placeholder": "Aziz Karimov",
+    "email": "Email",
+    "password": "Parol",
+    "password_hint": "Kamida 8 ta belgi",
+    "submit": "Tashkilot yaratish",
+    "submitting": "Yaratilmoqda…",
+    "already_have": "Akkountingiz bormi?",
+    "login_link": "Kirish",
+    "failed": "Tashkilotni yaratib bo'lmadi.",
+    "org_slug": "Tashkilot identifikatori",
+    "org_slug_hint": "Kichik lotin harflari, raqamlar, defis. Kirishda ishlatiladi."
   }
 }

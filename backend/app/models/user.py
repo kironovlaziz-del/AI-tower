@@ -1,4 +1,12 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    DateTime,
+    ForeignKey,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 import enum
@@ -17,9 +25,16 @@ class UserRole(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
+    # The same email address can belong to multiple organizations. Identity
+    # is the pair (org_id, email), which is what the login flow uses when
+    # the user provides their org slug.
+    __table_args__ = (
+        UniqueConstraint("org_id", "email", name="uq_users_org_email"),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
-    email = Column(String(255), unique=True, index=True, nullable=False)
+    email = Column(String(255), index=True, nullable=False)
     name = Column(String(255), nullable=False)
     hashed_password = Column(String(255), nullable=False)
     role = Column(String(50), default=UserRole.user.value)

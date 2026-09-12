@@ -71,10 +71,10 @@ api.interceptors.response.use(
 );
 
 // ---- Auth ----
-export async function login(email: string, password: string) {
+export async function login(orgSlug: string, email: string, password: string) {
   const { data } = await api.post<{ access_token: string; token_type: string }>(
     "/auth/login",
-    { email, password }
+    { org_slug: orgSlug, email, password }
   );
   return data;
 }
@@ -84,6 +84,7 @@ export async function register(payload: {
   password: string;
   name: string;
   org_name: string;
+  org_slug: string;
 }) {
   const { data } = await api.post<User>("/users/register", payload);
   return data;

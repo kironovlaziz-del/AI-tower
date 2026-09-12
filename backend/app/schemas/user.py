@@ -1,7 +1,20 @@
-from pydantic import BaseModel, EmailStr, Field
+import re
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
 from typing import Optional
 from app.models.user import UserRole
+
+
+SLUG_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$")
+
+
+def _validate_slug(v: str) -> str:
+    v = v.strip().lower()
+    if not SLUG_PATTERN.match(v):
+        raise ValueError(
+            "slug must be 3-63 chars, lowercase letters, digits and hyphens"
+        )
+    return v
 
 
 class UserBase(BaseModel):
@@ -15,10 +28,16 @@ class UserCreate(UserBase):
     forced to admin - see api/users.py."""
     password: str = Field(min_length=8)
     org_name: str
+    org_slug: str
+
+    @field_validator("org_slug")
+    @classmethod
+    def _slug(cls, v: str) -> str:
+        return _validate_slug(v)
 
 
 class UserInvite(BaseModel):
-    """Admin inviting a teammate into an existing organization."""
+    """Admin inviting a teammate into the existing organization."""
     email: EmailStr
     name: str
     role: UserRole = UserRole.user
@@ -49,6 +68,8 @@ class UserOut(UserBase):
 
 
 class UserLogin(BaseModel):
+    # The slug disambiguates users that share an email across organizations.
+    org_slug: str
     email: EmailStr
     password: str
 

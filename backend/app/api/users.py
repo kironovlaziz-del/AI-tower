@@ -30,14 +30,17 @@ async def register(
     The first user is always an admin, regardless of what role was sent
     in the payload.
     """
-    result = await db.execute(select(User).where(User.email == user_data.email))
+    # The slug must be free - it is the org's public identifier.
+    result = await db.execute(
+        select(Organization).where(Organization.slug == user_data.org_slug)
+    )
     if result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
+            detail=f"Organization slug '{user_data.org_slug}' is already taken",
         )
 
-    org = Organization(name=user_data.org_name)
+    org = Organization(name=user_data.org_name, slug=user_data.org_slug)
     db.add(org)
     await db.flush()
 
@@ -108,11 +111,17 @@ async def invite_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.admin)),
 ):
-    result = await db.execute(select(User).where(User.email == data.email))
+    # Email only needs to be unique within this organization.
+    result = await db.execute(
+        select(User).where(
+            User.email == data.email,
+            User.org_id == current_user.org_id,
+        )
+    )
     if result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
+            detail="This email is already a member of your organization",
         )
 
     user = User(

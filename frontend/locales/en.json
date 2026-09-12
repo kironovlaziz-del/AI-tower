@@ -42,7 +42,9 @@
     "login_link": "Sign in",
     "login_failed": "Could not sign in. Check your email and password.",
     "register_failed": "Could not create organization.",
-    "password_hint": "At least 6 characters"
+    "password_hint": "At least 6 characters",
+    "org_slug": "Organization",
+    "org_slug_hint": "The short identifier you chose when registering (e.g. acme)"
   },
   "sidebar": {
     "sections": {
@@ -705,5 +707,22 @@
       "disabled": "disabled"
     },
     "admin_only": "Only administrators can access this page."
+  },
+  "register": {
+    "title": "New organization",
+    "org_name": "Organization name",
+    "org_name_placeholder": "Acme Corp",
+    "your_name": "Your name",
+    "your_name_placeholder": "John Smith",
+    "email": "Email",
+    "password": "Password",
+    "password_hint": "At least 8 characters",
+    "submit": "Create organization",
+    "submitting": "Creating…",
+    "already_have": "Already have an account?",
+    "login_link": "Sign in",
+    "failed": "Could not create organization.",
+    "org_slug": "Organization identifier",
+    "org_slug_hint": "Lowercase letters, digits, hyphens. Used in login."
   }
 }

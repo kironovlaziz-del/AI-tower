@@ -1,26 +1,35 @@
 "use client";
 
-import { Form } from "@/components/Form";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
+const LAST_ORG_KEY = "ai_ct_last_org";
+
 export default function LoginPage() {
   const { login } = useAuth();
   const { t } = useTranslation();
+  const [orgSlug, setOrgSlug] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Pre-fill the last used slug for convenience.
+  useEffect(() => {
+    const saved = window.localStorage.getItem(LAST_ORG_KEY);
+    if (saved) setOrgSlug(saved);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      await login(email, password);
+      await login(orgSlug, email, password);
+      window.localStorage.setItem(LAST_ORG_KEY, orgSlug);
     } catch (err: unknown) {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
@@ -37,14 +46,26 @@ export default function LoginPage() {
         <div className="auth-brand">{t("auth.brand")}</div>
         <LanguageSwitcher variant="light" />
         <h1 className="auth-title">{t("auth.login_title")}</h1>
-        <Form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit}>
+          <div className="field">
+            <label htmlFor="org_slug">{t("auth.org_slug")}</label>
+            <input
+              id="org_slug"
+              required
+              autoFocus
+              value={orgSlug}
+              onChange={(e) => setOrgSlug(e.target.value.toLowerCase())}
+              placeholder="acme"
+              pattern="[a-z0-9-]+"
+            />
+            <span className="hint-text">{t("auth.org_slug_hint")}</span>
+          </div>
           <div className="field">
             <label htmlFor="email">{t("auth.email")}</label>
             <input
               id="email"
               type="email"
               required
-              autoFocus
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.com"
@@ -70,7 +91,7 @@ export default function LoginPage() {
           >
             {submitting ? t("auth.login_button_loading") : t("auth.login_button")}
           </button>
-        </Form>
+        </form>
         <p className="auth-switch">
           {t("auth.no_account")} <Link href="/register">{t("auth.register_link")}</Link>
         </p>

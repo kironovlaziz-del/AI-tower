@@ -14,7 +14,7 @@ import type { User } from "./types";
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (orgSlug: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -47,8 +47,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loadUser]);
 
   const login = useCallback(
-    async (email: string, password: string) => {
-      const { access_token } = await loginRequest(email, password);
+    async (orgSlug: string, email: string, password: string) => {
+      const { access_token } = await loginRequest(orgSlug, email, password);
       setToken(access_token);
       const me = await getMe();
       setUser(me);
