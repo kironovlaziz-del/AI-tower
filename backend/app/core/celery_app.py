@@ -35,4 +35,4 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
 )
 
-from app.workers import training_tasks  # noqa: E402,F401
+from app.workers import request_tasks, training_tasks  # noqa: E402,F401

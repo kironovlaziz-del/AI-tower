@@ -217,9 +217,11 @@ class ApprovalService:
         await self.db.refresh(approval)
 
         if request and data.decision == "approved":
-            from app.services.request_service import RequestService
+            # Hand off to Celery - the provider call can take up to a
+            # minute and would block the HTTP response otherwise.
+            from app.core.celery_app import celery_app
 
-            await RequestService(self.db).process_request(request.id, org_id)
+            celery_app.send_task("request.process", args=[request.id, org_id])
 
         return approval
 

@@ -117,8 +117,12 @@ class RequestService:
         await self.db.refresh(request)
 
         if not requires_approval:
-            await self.process_request(request.id, org_id)
-            await self.db.refresh(request)
+            # Run the provider call in a worker so the API responds
+            # immediately with a "pending" request. The worker will flip
+            # the status to "completed" or "failed" when it finishes.
+            from app.core.celery_app import celery_app
+
+            celery_app.send_task("request.process", args=[request.id, org_id])
 
         return request
 

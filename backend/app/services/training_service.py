@@ -241,6 +241,10 @@ class TrainingService:
         job.feature_columns_json = None
         job.started_at = None
         job.finished_at = None
+        # Clear the previous task id before queueing a new one. Otherwise
+        # a cancel hitting between commit and send_task would revoke the
+        # already-finished task instead of the new one.
+        job.celery_task_id = None
         # Drop any cached model for this path - the new run will overwrite
         # the artifact and stale weights must not be served.
         _load_sklearn_bundle.cache_clear()

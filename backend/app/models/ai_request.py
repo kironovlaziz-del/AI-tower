@@ -32,4 +32,8 @@ class AIRequest(Base):
     # "keep indefinitely"; a background task can use this to wipe PII.
     retention_expires_at = Column(DateTime(timezone=True))
 
+    # Populated when the provider call fails asynchronously (see
+    # workers/request_tasks.py) so the UI can show what went wrong.
+    error_message = Column(Text)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -52,19 +52,54 @@ GPU_ADDITIONAL_MODELS: List[Dict[str, Any]] = [
     },
 ]
 
+# Models suitable for causal language modeling (text generation).
+# Small enough to train on CPU for demos; larger ones need a GPU.
+GENERATION_MODELS: List[Dict[str, Any]] = [
+    {
+        "id": "sshleifer/tiny-gpt2",
+        "label": "Tiny GPT-2 (~2M параметров)",
+        "note": "Игрушечная модель, годится только для проверки пайплайна.",
+        "estimated_vram_gb": 0.2,
+    },
+    {
+        "id": "distilgpt2",
+        "label": "DistilGPT-2 (~82M параметров)",
+        "note": "Быстрая генерация на CPU; качество ниже, чем у полноценного GPT-2.",
+        "estimated_vram_gb": 2.5,
+    },
+    {
+        "id": "gpt2",
+        "label": "GPT-2 (~124M параметров)",
+        "note": "Базовый GPT-2; для практичного времени обучения нужен GPU.",
+        "estimated_vram_gb": 4.0,
+    },
+]
+
 # Safety margin: require this multiple of the estimate to be free, since the
 # estimate doesn't account for activation memory growing with batch size,
 # CUDA context overhead, or other processes sharing the GPU.
 VRAM_SAFETY_MARGIN = 1.3
 
 
-def allowed_models(gpu_available: bool, gpu_vram_free_gb: Optional[float] = None) -> List[Dict[str, Any]]:
+def allowed_models(
+    gpu_available: bool,
+    gpu_vram_free_gb: Optional[float] = None,
+    task_type: str = "transformer_text_classification",
+) -> List[Dict[str, Any]]:
     """
-    Returns the curated model list, annotated with whether each one
-    currently fits in the detected free VRAM (fits_vram: true/false/null).
-    null means "unknown" - either no GPU, or VRAM couldn't be read.
+    Returns the curated model list for the given task type, annotated with
+    whether each model currently fits in the detected free VRAM
+    (fits_vram: true/false/null). null means "unknown" - either no GPU, or
+    VRAM couldn't be read.
     """
-    candidates = CPU_SAFE_MODELS + GPU_ADDITIONAL_MODELS if gpu_available else list(CPU_SAFE_MODELS)
+    if task_type == "transformer_text_generation":
+        candidates = list(GENERATION_MODELS)
+        if gpu_available:
+            candidates += [
+                m for m in GENERATION_MODELS if m["estimated_vram_gb"] >= 3.0
+            ]
+    else:
+        candidates = CPU_SAFE_MODELS + GPU_ADDITIONAL_MODELS if gpu_available else list(CPU_SAFE_MODELS)
     result = []
     for m in candidates:
         entry = dict(m)
@@ -84,7 +119,7 @@ def check_model_fit(
     Validates a specific model choice against detected hardware.
     Returns {"allowed": bool, "reason": str|None}.
     """
-    all_curated = CPU_SAFE_MODELS + GPU_ADDITIONAL_MODELS
+    all_curated = CPU_SAFE_MODELS + GPU_ADDITIONAL_MODELS + GENERATION_MODELS
     match = next((m for m in all_curated if m["id"] == model_id), None)
 
     if match is None:

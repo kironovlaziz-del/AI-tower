@@ -606,6 +606,13 @@ def train_model(job_id: int) -> None:
             job.error_message = f"{exc}\n{traceback.format_exc(limit=3)}"
             job.progress_stage = "Failed"
 
+        # Race guard: the API may have marked this job cancelled while we
+        # were training. Reload and do not overwrite a cancellation with
+        # our own final status.
+        db.refresh(job)
+        if job.status == "cancelled":
+            return
+
         job.finished_at = datetime.now(timezone.utc)
         if job.status == "completed":
             job.progress_pct = 100.0
