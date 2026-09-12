@@ -45,7 +45,15 @@ _DETECTORS: List[Tuple[str, Pattern[str]]] = [
         "API_KEY",
         re.compile(r"\b(?:sk|pk|api|key)[-_][A-Za-z0-9]{12,}\b", re.IGNORECASE),
     ),
-    ("PHONE", re.compile(r"(?<!\d)(\+?\d[\d\-\s()]{8,}\d)(?!\d)")),
+    # Phones must contain a "+" prefix or parentheses. Without that
+    # requirement, ISO dates like "2026-01-15" (10 chars with hyphens)
+    # match the generic "digits with separators" pattern and get masked.
+    (
+        "PHONE",
+        re.compile(
+            r"(?<!\d)(?:\+\d[\d\-\s()]{7,}\d|\(\d{2,4}\)[\d\-\s()]{5,}\d)(?!\d)"
+        ),
+    ),
 ]
 
 
