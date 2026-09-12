@@ -1,4 +1,7 @@
 from pydantic import model_validator
+from pathlib import Path
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -39,9 +42,11 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # MLOps
-    DATASETS_DIR: str = "./data/datasets"
-    MODELS_DIR: str = "./data/models"
+    # MLOps - relative paths are resolved against the project root
+    # (backend/) so they work regardless of the current working directory.
+    # Absolute paths from .env are used as-is.
+    DATASETS_DIR: str = "data/datasets"
+    MODELS_DIR: str = "data/models"
 
     # Connections: symmetric key used to encrypt provider API keys at rest.
     # Generate with:
@@ -59,6 +64,24 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        # Reject unknown variables in .env so a typo like "POSTGRESS_PASSWORD"
+        # surfaces as a clear startup error instead of being silently ignored.
+        extra = "forbid"
+
+    @model_validator(mode="after")
+    def _resolve_relative_paths(self):
+        """
+        Anchor MODELS_DIR and DATASETS_DIR to the backend package directory
+        so that starting uvicorn from a different working directory does
+        not silently create a second data/ tree somewhere else on disk.
+        """
+        backend_root = Path(__file__).resolve().parents[2]
+        for field in ("DATASETS_DIR", "MODELS_DIR"):
+            value = getattr(self, field)
+            p = Path(value)
+            if not p.is_absolute():
+                setattr(self, field, str((backend_root / p).resolve()))
+        return self
 
     @model_validator(mode="after")
     def _enforce_production_secrets(self):

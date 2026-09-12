@@ -56,7 +56,13 @@ class ProviderService:
 
         if data.name is not None:
             provider.name = data.name
-        if data.type is not None:
+        if data.type is not None and data.type != provider.type:
+            # Changing the provider type invalidates any stored credential:
+            # an OpenAI key sent to Anthropic will just 401. Force the admin
+            # to enter a matching key when switching vendors.
+            provider.type = data.type
+            provider.api_key_encrypted = None
+        elif data.type is not None:
             provider.type = data.type
         if data.status is not None:
             provider.status = data.status

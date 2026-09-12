@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import datetime
 from typing import List, Optional, Literal
 
@@ -17,6 +17,22 @@ class NotificationChannelCreate(BaseModel):
     target: str
     events: List[str]
     enabled: bool = True
+
+    @field_validator("target")
+    @classmethod
+    def _validate_target(cls, v: str, info):
+        channel_type = info.data.get("channel_type")
+        v = v.strip()
+        if not v:
+            raise ValueError("target must not be empty")
+        if channel_type == "email":
+            # Basic structural check - enough to reject obvious typos.
+            if "@" not in v or v.startswith("@") or v.endswith("@"):
+                raise ValueError("invalid email address")
+        elif channel_type == "webhook":
+            if not (v.startswith("http://") or v.startswith("https://")):
+                raise ValueError("webhook URL must start with http:// or https://")
+        return v
 
 
 class NotificationChannelUpdate(BaseModel):
