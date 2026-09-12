@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
+import { Form } from "@/components/Form";
 import { createProvider, listProviders, updateProvider } from "@/lib/api";
 import type { Provider } from "@/lib/types";
 
@@ -16,17 +18,21 @@ function ToggleSwitch({
   on,
   onClick,
   disabled,
+  labelOn,
+  labelOff,
 }: {
   on: boolean;
   onClick: () => void;
   disabled?: boolean;
+  labelOn: string;
+  labelOff: string;
 }) {
   return (
     <button className="conn-toggle" onClick={onClick} disabled={disabled} type="button">
       <span className={`conn-toggle-track${on ? " on" : ""}`}>
         <span className="conn-toggle-thumb" />
       </span>
-      {on ? "подключено" : "отключено"}
+      {on ? labelOn : labelOff}
     </button>
   );
 }
@@ -42,6 +48,7 @@ function ConnectionCard({
   onSaveCredentials: (fields: { api_key?: string; base_url?: string; default_model?: string }) => Promise<void>;
   busy: boolean;
 }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [baseUrl, setBaseUrl] = useState(provider.base_url || "");
@@ -70,23 +77,34 @@ function ConnectionCard({
           <div className="conn-card-name">{provider.name}</div>
           <div className="conn-card-type">{provider.type}</div>
         </div>
-        <ToggleSwitch on={provider.status === "active"} onClick={onToggle} disabled={busy} />
+        <ToggleSwitch
+          on={provider.status === "active"}
+          onClick={onToggle}
+          disabled={busy}
+          labelOn={t("connections.toggle_on")}
+          labelOff={t("connections.toggle_off")}
+        />
       </div>
-      <div className="hint-text">{provider.sla || "SLA не указан"}</div>
+      <div className="hint-text">{provider.sla || t("connections.no_sla")}</div>
       <div>
         <span className={`pill ${provider.has_credentials ? "pill-low" : "pill-medium"}`}>
-          {provider.has_credentials ? "ключ настроен" : "без ключа (mock-ответы)"}
+          {provider.has_credentials
+            ? t("connections.key_configured")
+            : t("connections.key_missing")}
         </span>
       </div>
 
       {!editing ? (
         <button className="btn btn-sm" onClick={() => setEditing(true)}>
-          Настроить доступ
+          {t("connections.configure_access")}
         </button>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div className="field" style={{ margin: 0 }}>
-            <label>API-ключ {provider.has_credentials && "(оставьте пустым, чтобы не менять)"}</label>
+            <label>
+              {t("connections.api_key")}{" "}
+              {provider.has_credentials && t("connections.leave_blank")}
+            </label>
             <input
               type="password"
               value={apiKey}
@@ -95,7 +113,7 @@ function ConnectionCard({
             />
           </div>
           <div className="field" style={{ margin: 0 }}>
-            <label>Base URL</label>
+            <label>{t("connections.base_url")}</label>
             <input
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
@@ -103,7 +121,7 @@ function ConnectionCard({
             />
           </div>
           <div className="field" style={{ margin: 0 }}>
-            <label>Модель по умолчанию</label>
+            <label>{t("connections.default_model")}</label>
             <input
               value={defaultModel}
               onChange={(e) => setDefaultModel(e.target.value)}
@@ -112,10 +130,10 @@ function ConnectionCard({
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
-              {saving ? "Сохраняем…" : "Сохранить"}
+              {saving ? t("connections.saving") : t("connections.save")}
             </button>
             <button className="btn btn-sm" onClick={() => setEditing(false)} disabled={saving}>
-              Отмена
+              {t("common.cancel")}
             </button>
           </div>
         </div>
@@ -125,6 +143,7 @@ function ConnectionCard({
 }
 
 export default function ConnectionsPage() {
+  const { t } = useTranslation();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -203,7 +222,7 @@ export default function ConnectionsPage() {
       setShowForm(false);
       refresh();
     } catch {
-      setError("Не удалось подключить.");
+      setError(t("connections.failed"));
     } finally {
       setSubmitting(false);
     }
@@ -215,34 +234,29 @@ export default function ConnectionsPage() {
   return (
     <>
       <PageHeader
-        title="Connections"
+        title={t("connections.title")}
         actions={
           <button className="btn btn-primary btn-sm" onClick={() => setShowForm((s) => !s)}>
-            {showForm ? "Отмена" : "Подключить AI"}
+            {showForm ? t("connections.cancel") : t("connections.connect")}
           </button>
         }
       />
       <div className="content">
         <p className="hint-text" style={{ marginBottom: 16 }}>
-          Здесь включаются/отключаются подключения и настраивается реальный
-          доступ (API-ключ, base URL, модель по умолчанию). Ключ хранится в
-          БД в зашифрованном виде и никогда не возвращается обратно в API —
-          только показывается, настроен он или нет. Без ключа запросы через
-          такое подключение получают явно помеченный mock-ответ, а не
-          реальный вызов провайдера.
+          {t("connections.hint")}
         </p>
 
         <div className="stat-grid" style={{ marginBottom: 4 }}>
           <div className="stat">
-            <div className="stat-label">Подключено</div>
+            <div className="stat-label">{t("connections.stat_active")}</div>
             <div className="stat-value">{activeCount}</div>
           </div>
           <div className="stat">
-            <div className="stat-label">С реальным ключом</div>
+            <div className="stat-label">{t("connections.stat_with_keys")}</div>
             <div className="stat-value">{withKeysCount}</div>
           </div>
           <div className="stat">
-            <div className="stat-label">Всего подключений</div>
+            <div className="stat-label">{t("connections.stat_total")}</div>
             <div className="stat-value">{providers.length}</div>
           </div>
         </div>
@@ -250,23 +264,23 @@ export default function ConnectionsPage() {
         {showForm && (
           <div className="panel" style={{ margin: "20px 0" }}>
             <div className="panel-header">
-              <h2>Новое подключение</h2>
+              <h2>{t("connections.form_title")}</h2>
             </div>
             <div className="panel-body">
-              <form onSubmit={handleCreate}>
+              <Form onSubmit={handleCreate}>
                 <div className="form-row">
                   <div className="field">
-                    <label htmlFor="name">Название</label>
+                    <label htmlFor="name">{t("connections.name")}</label>
                     <input
                       id="name"
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="OpenAI, Anthropic, локальная модель…"
+                      placeholder={t("connections.name_placeholder")}
                     />
                   </div>
                   <div className="field">
-                    <label htmlFor="type">Тип</label>
+                    <label htmlFor="type">{t("connections.type")}</label>
                     <select id="type" value={type} onChange={(e) => handleTypeChange(e.target.value)}>
                       <option value="openai">openai</option>
                       <option value="anthropic">anthropic</option>
@@ -277,7 +291,7 @@ export default function ConnectionsPage() {
                 </div>
                 <div className="form-row">
                   <div className="field">
-                    <label htmlFor="base_url">Base URL</label>
+                    <label htmlFor="base_url">{t("connections.base_url")}</label>
                     <input
                       id="base_url"
                       value={baseUrl}
@@ -286,7 +300,7 @@ export default function ConnectionsPage() {
                     />
                   </div>
                   <div className="field">
-                    <label htmlFor="default_model">Модель по умолчанию</label>
+                    <label htmlFor="default_model">{t("connections.default_model")}</label>
                     <input
                       id="default_model"
                       value={defaultModel}
@@ -296,7 +310,7 @@ export default function ConnectionsPage() {
                   </div>
                 </div>
                 <div className="field">
-                  <label htmlFor="api_key">API-ключ (необязательно — без него будут mock-ответы)</label>
+                  <label htmlFor="api_key">{t("connections.api_key")}</label>
                   <input
                     id="api_key"
                     type="password"
@@ -306,27 +320,27 @@ export default function ConnectionsPage() {
                   />
                 </div>
                 <div className="field">
-                  <label htmlFor="sla">SLA / примечание</label>
+                  <label htmlFor="sla">{t("connections.sla")}</label>
                   <input
                     id="sla"
                     value={sla}
                     onChange={(e) => setSla(e.target.value)}
-                    placeholder="Необязательно"
+                    placeholder={t("connections.sla_placeholder")}
                   />
                 </div>
                 {error && <p className="error-text">{error}</p>}
                 <button className="btn btn-primary" type="submit" disabled={submitting}>
-                  {submitting ? "Подключаем…" : "Подключить"}
+                  {submitting ? t("connections.submitting") : t("connections.submit")}
                 </button>
-              </form>
+              </Form>
             </div>
           </div>
         )}
 
         {loading ? (
-          <p className="loading-line">Загрузка…</p>
+          <p className="loading-line">{t("connections.loading")}</p>
         ) : providers.length === 0 ? (
-          <p className="hint-text">Подключений пока нет — добавьте первое.</p>
+          <p className="hint-text">{t("connections.empty")}</p>
         ) : (
           <div className="conn-grid">
             {providers.map((p) => (

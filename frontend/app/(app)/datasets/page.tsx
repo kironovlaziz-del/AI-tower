@@ -1,24 +1,20 @@
 "use client";
 
+import { Form } from "@/components/Form";
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { deleteDataset, listDatasets, uploadDataset } from "@/lib/api";
 import type { Dataset } from "@/lib/types";
 
-const TASK_TYPES = [
-  { value: "text_classification", label: "Классификация текста" },
-  { value: "regression", label: "Регрессия" },
-  { value: "tabular", label: "Табличные данные" },
-  { value: "other", label: "Другое" },
-];
-
 function formatSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} Б`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function DatasetsPage() {
+  const { t, i18n } = useTranslation();
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -26,10 +22,18 @@ export default function DatasetsPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [taskType, setTaskType] = useState("tabular");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
+
+  const TASK_TYPES = [
+    { value: "text_classification", labelKey: "datasets.task_types.text_classification" },
+    { value: "regression", labelKey: "datasets.task_types.regression" },
+    { value: "tabular", labelKey: "datasets.task_types.tabular" },
+    { value: "other", labelKey: "datasets.task_types.other" },
+  ];
 
   function refresh() {
     setLoading(true);
@@ -43,9 +47,8 @@ export default function DatasetsPage() {
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const file = fileRef.current?.files?.[0];
-    if (!file) {
-      setError("Выберите файл датасета (.csv, .json, .jsonl, .txt, .tsv).");
+    if (!selectedFile) {
+      setError(t("datasets.error_no_file"));
       return;
     }
     setSubmitting(true);
@@ -54,11 +57,12 @@ export default function DatasetsPage() {
         name,
         description: description || undefined,
         task_type: taskType,
-        file,
+        file: selectedFile,
       });
       setName("");
       setDescription("");
       setTaskType("tabular");
+      setSelectedFile(null);
       if (fileRef.current) fileRef.current.value = "";
       setShowForm(false);
       refresh();
@@ -66,7 +70,7 @@ export default function DatasetsPage() {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
           ?.detail;
-      setError(detail || "Не удалось загрузить датасет.");
+      setError(detail || t("datasets.error_upload"));
     } finally {
       setSubmitting(false);
     }
@@ -85,10 +89,10 @@ export default function DatasetsPage() {
   return (
     <>
       <PageHeader
-        title="Dataset Manager"
+        title={t("datasets.title")}
         actions={
           <button className="btn btn-primary btn-sm" onClick={() => setShowForm((s) => !s)}>
-            {showForm ? "Отмена" : "Загрузить датасет"}
+            {showForm ? t("datasets.cancel") : t("datasets.upload")}
           </button>
         }
       />
@@ -96,82 +100,103 @@ export default function DatasetsPage() {
         {showForm && (
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-header">
-              <h2>Загрузка датасета</h2>
+              <h2>{t("datasets.form_title")}</h2>
             </div>
             <div className="panel-body">
-              <form onSubmit={handleUpload}>
+              <Form onSubmit={handleUpload}>
                 <div className="form-row">
                   <div className="field">
-                    <label htmlFor="name">Название</label>
+                    <label htmlFor="name">{t("datasets.name")}</label>
                     <input
                       id="name"
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Отзывы клиентов за 2026"
+                      placeholder={t("datasets.name_placeholder")}
                     />
                   </div>
                   <div className="field">
-                    <label htmlFor="task_type">Тип задачи</label>
+                    <label htmlFor="task_type">{t("datasets.task_type")}</label>
                     <select
                       id="task_type"
                       value={taskType}
                       onChange={(e) => setTaskType(e.target.value)}
                     >
-                      {TASK_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>
-                          {t.label}
+                      {TASK_TYPES.map((tt) => (
+                        <option key={tt.value} value={tt.value}>
+                          {t(tt.labelKey)}
                         </option>
                       ))}
                     </select>
                   </div>
                 </div>
                 <div className="field">
-                  <label htmlFor="description">Описание</label>
+                  <label htmlFor="description">{t("datasets.description")}</label>
                   <textarea
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Что внутри, откуда взяты данные"
+                    placeholder={t("datasets.description_placeholder")}
                   />
                 </div>
                 <div className="field">
-                  <label htmlFor="file">Файл (.csv, .json, .jsonl, .txt, .tsv, до 200 МБ)</label>
-                  <input id="file" type="file" ref={fileRef} accept=".csv,.json,.jsonl,.txt,.tsv" />
+                  <label>{t("datasets.file")}</label>
+                  <input
+                    id="file"
+                    type="file"
+                    ref={fileRef}
+                    accept=".csv,.json,.jsonl,.txt,.tsv"
+                    style={{ display: "none" }}
+                    onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                  />
+                  <div className="file-input-row">
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      onClick={() => fileRef.current?.click()}
+                    >
+                      {t("datasets.choose_file")}
+                    </button>
+                    <span className={`file-name${selectedFile ? " has-file" : ""}`}>
+                      {selectedFile
+                        ? selectedFile.name
+                        : t("datasets.no_file_selected")}
+                    </span>
+                  </div>
                 </div>
                 {error && <p className="error-text">{error}</p>}
                 <button className="btn btn-primary" type="submit" disabled={submitting}>
-                  {submitting ? "Загружаем…" : "Загрузить"}
+                  {submitting ? t("datasets.submitting") : t("datasets.submit")}
                 </button>
-              </form>
+              </Form>
             </div>
           </div>
         )}
 
         <div className="panel">
           <div className="panel-header">
-            <h2>Датасеты</h2>
+            <h2>{t("datasets.table_title")}</h2>
           </div>
           <table>
             <thead>
               <tr>
-                <th>Название</th>
-                <th>Тип задачи</th>
-                <th>Формат</th>
-                <th>Размер</th>
-                <th>Загружен</th>
+                <th>{t("datasets.col_name")}</th>
+                <th>{t("datasets.col_task_type")}</th>
+                <th>{t("datasets.col_format")}</th>
+                <th>{t("datasets.col_size")}</th>
+                <th>{t("datasets.col_uploaded")}</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr className="empty-row">
-                  <td colSpan={6}>Загрузка…</td>
+                  <td colSpan={6}>{t("common.loading")}</td>
                 </tr>
               )}
               {!loading && datasets.length === 0 && (
                 <tr className="empty-row">
-                  <td colSpan={6}>Датасетов пока нет</td>
+                  <td colSpan={6}>{t("datasets.empty")}</td>
                 </tr>
               )}
               {datasets.map((d) => (
@@ -182,11 +207,13 @@ export default function DatasetsPage() {
                       <div className="hint-text">{d.description}</div>
                     )}
                   </td>
-                  <td className="mono">{d.task_type}</td>
+                  <td className="mono">
+                    {t(`datasets.task_types.${d.task_type}`, d.task_type)}
+                  </td>
                   <td className="mono">{d.file_format || "—"}</td>
                   <td className="mono">{formatSize(d.size_bytes)}</td>
                   <td className="mono">
-                    {new Date(d.created_at).toLocaleString("ru-RU")}
+                    {new Date(d.created_at).toLocaleString(i18n.language)}
                   </td>
                   <td>
                     <button
@@ -194,7 +221,7 @@ export default function DatasetsPage() {
                       disabled={busyId === d.id}
                       onClick={() => handleDelete(d.id)}
                     >
-                      Удалить
+                      {t("datasets.delete")}
                     </button>
                   </td>
                 </tr>

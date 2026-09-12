@@ -2,6 +2,12 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 
+class ComputeWarning(BaseModel):
+    code: str
+    disk_free_gb: Optional[float] = None
+    vram_free_gb: Optional[float] = None
+
+
 class ComputeStatusOut(BaseModel):
     cpu_logical_cores: int
     cpu_physical_cores: Optional[int]
@@ -15,5 +21,4 @@ class ComputeStatusOut(BaseModel):
     gpu_vram_total_gb: Optional[float] = None
     gpu_vram_free_gb: Optional[float] = None
     recommendation_tier: str
-    recommendation_detail: str
-    warnings: List[str]
+    warnings: List[ComputeWarning]

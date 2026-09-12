@@ -160,6 +160,12 @@ export interface Dataset {
   created_at: string;
 }
 
+export interface ComputeWarning {
+  code: string;
+  disk_free_gb?: number | null;
+  vram_free_gb?: number | null;
+}
+
 export interface ComputeStatus {
   cpu_logical_cores: number;
   cpu_physical_cores?: number | null;
@@ -174,7 +180,7 @@ export interface ComputeStatus {
   gpu_vram_free_gb?: number | null;
   recommendation_tier: string;
   recommendation_detail: string;
-  warnings: string[];
+  warnings: ComputeWarning[];
 }
 
 export type TrainingTaskType =

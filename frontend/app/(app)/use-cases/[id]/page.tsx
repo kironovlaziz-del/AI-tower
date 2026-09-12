@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { RiskPill, StatusPill } from "@/components/Pill";
 import {
@@ -16,6 +17,7 @@ import type { Policy, PolicyVersion, RiskLevel, UseCase } from "@/lib/types";
 export default function UseCaseDetailPage() {
   const params = useParams<{ id: string }>();
   const useCaseId = Number(params.id);
+  const { t, i18n } = useTranslation();
 
   const [useCase, setUseCase] = useState<UseCase | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,9 +84,9 @@ export default function UseCaseDetailPage() {
   if (loading || !useCase) {
     return (
       <>
-        <PageHeader title="Сценарий использования" />
+        <PageHeader title={t("use_cases.title")} />
         <div className="content">
-          <p className="loading-line">Загрузка…</p>
+          <p className="loading-line">{t("use_cases.detail.loading")}</p>
         </div>
       </>
     );
@@ -95,31 +97,31 @@ export default function UseCaseDetailPage() {
       <PageHeader title={useCase.name} />
       <div className="content">
         <div className="breadcrumb">
-          <Link href="/use-cases">Сценарии использования</Link> / #{useCase.id}
+          <Link href="/use-cases">{t("use_cases.detail.breadcrumb")}</Link> / #{useCase.id}
         </div>
 
         <div className="panel" style={{ marginBottom: 20 }}>
           <div className="panel-body">
             <dl className="kv-grid">
-              <dt>Текущий риск</dt>
+              <dt>{t("use_cases.detail.current_risk")}</dt>
               <dd>
                 <RiskPill level={useCase.risk_level} />
               </dd>
-              <dt>Статус</dt>
+              <dt>{t("use_cases.detail.status")}</dt>
               <dd>
                 <StatusPill status={useCase.status} />
               </dd>
-              <dt>Владелец (user id)</dt>
+              <dt>{t("use_cases.detail.owner")}</dt>
               <dd className="mono">{useCase.owner_user_id ?? "—"}</dd>
-              <dt>Привязанная версия политики</dt>
+              <dt>{t("use_cases.detail.linked_policy")}</dt>
               <dd className="mono">
                 {useCase.approved_policy_version_id
                   ? `#${useCase.approved_policy_version_id}`
-                  : "не привязана"}
+                  : t("use_cases.detail.not_linked")}
               </dd>
-              <dt>Создан</dt>
+              <dt>{t("use_cases.detail.created")}</dt>
               <dd className="mono">
-                {new Date(useCase.created_at).toLocaleString("ru-RU")}
+                {new Date(useCase.created_at).toLocaleString(i18n.language)}
               </dd>
             </dl>
           </div>
@@ -127,38 +129,38 @@ export default function UseCaseDetailPage() {
 
         <div className="panel" style={{ marginBottom: 20 }}>
           <div className="panel-header">
-            <h2>Изменить</h2>
+            <h2>{t("use_cases.detail.edit_title")}</h2>
           </div>
           <div className="panel-body">
             <div className="form-row">
               <div className="field">
-                <label htmlFor="risk">Уровень риска</label>
+                <label htmlFor="risk">{t("use_cases.detail.risk")}</label>
                 <select
                   id="risk"
                   value={riskLevel}
                   onChange={(e) => setRiskLevel(e.target.value as RiskLevel)}
                 >
-                  <option value="low">low</option>
-                  <option value="medium">medium</option>
-                  <option value="high">high</option>
-                  <option value="critical">critical</option>
+                  <option value="low">{t("risk.low")}</option>
+                  <option value="medium">{t("risk.medium")}</option>
+                  <option value="high">{t("risk.high")}</option>
+                  <option value="critical">{t("risk.critical")}</option>
                 </select>
               </div>
               <div className="field">
-                <label htmlFor="status">Статус</label>
+                <label htmlFor="status">{t("use_cases.detail.status")}</label>
                 <select id="status" value={status} onChange={(e) => setStatus(e.target.value)}>
-                  <option value="active">active</option>
-                  <option value="inactive">inactive</option>
-                  <option value="suspended">suspended</option>
+                  <option value="active">{t("status.active")}</option>
+                  <option value="inactive">{t("status.inactive")}</option>
+                  <option value="suspended">{t("status.suspended")}</option>
                 </select>
               </div>
             </div>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? "Сохраняем…" : "Сохранить изменения"}
+              {saving ? t("use_cases.detail.saving") : t("use_cases.detail.save")}
             </button>
             {savedAt && (
               <span className="hint-text" style={{ marginLeft: 12 }}>
-                Сохранено
+                {t("use_cases.detail.saved")}
               </span>
             )}
           </div>
@@ -166,17 +168,15 @@ export default function UseCaseDetailPage() {
 
         <div className="panel">
           <div className="panel-header">
-            <h2>Привязать версию политики</h2>
+            <h2>{t("use_cases.detail.link_title")}</h2>
           </div>
           <div className="panel-body">
             <p className="hint-text" style={{ marginBottom: 12 }}>
-              Правила выбранной версии (например, <code>require_approval</code> или{" "}
-              <code>blocked_terms</code>) будут применяться ко всем запросам в
-              рамках этого сценария.
+              {t("use_cases.detail.link_hint")}
             </p>
             <div className="form-row">
               <div className="field">
-                <label htmlFor="policy">Политика</label>
+                <label htmlFor="policy">{t("use_cases.detail.policy")}</label>
                 <select
                   id="policy"
                   value={selectedPolicyId}
@@ -185,7 +185,7 @@ export default function UseCaseDetailPage() {
                     setSelectedVersionId("");
                   }}
                 >
-                  <option value="">Выберите политику…</option>
+                  <option value="">{t("use_cases.detail.policy_placeholder")}</option>
                   {policies.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -194,7 +194,7 @@ export default function UseCaseDetailPage() {
                 </select>
               </div>
               <div className="field">
-                <label htmlFor="version">Версия</label>
+                <label htmlFor="version">{t("use_cases.detail.version")}</label>
                 <select
                   id="version"
                   value={selectedVersionId}
@@ -203,10 +203,13 @@ export default function UseCaseDetailPage() {
                   }
                   disabled={versions.length === 0}
                 >
-                  <option value="">Выберите версию…</option>
+                  <option value="">{t("use_cases.detail.version_placeholder")}</option>
                   {versions.map((v) => (
                     <option key={v.id} value={v.id}>
-                      v{v.version} (#{v.id}) {v.approved_at ? "— согласована" : "— не согласована"}
+                      v{v.version} (#{v.id}){" "}
+                      {v.approved_at
+                        ? t("use_cases.detail.version_approved")
+                        : t("use_cases.detail.version_pending")}
                     </option>
                   ))}
                 </select>
@@ -217,7 +220,9 @@ export default function UseCaseDetailPage() {
               onClick={handleLinkPolicyVersion}
               disabled={!selectedVersionId || linking}
             >
-              {linking ? "Привязываем…" : "Привязать выбранную версию"}
+              {linking
+                ? t("use_cases.detail.linking")
+                : t("use_cases.detail.link_button")}
             </button>
           </div>
         </div>

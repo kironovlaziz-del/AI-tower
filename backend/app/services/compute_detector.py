@@ -2,23 +2,15 @@
 Compute Detector
 
 Reports what compute is actually available on this machine and translates
-that into a plain-language statement of what training workloads are
-realistic here. The goal is to stop a person from picking "fine-tune a 7B
-LLM" on a box that can't do it, before they waste hours finding out the
-hard way.
-
-No GPU detection library is assumed to be installed (torch is NOT a
-dependency of this backend by default - installing it is a deliberate,
-heavy decision left for when actual training is wired up). Detection here
-is import-optional and falls back to shelling out to `nvidia-smi`, which is
-enough to tell "no NVIDIA GPU present" from "GPU present, driver stack not
-yet installed".
+that into a hardware tier that the UI can render in the user's language.
+The detector returns machine-readable codes only — no user-facing text —
+so the frontend owns all localization via i18n.
 """
 
 import shutil
 import subprocess
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
 
@@ -37,13 +29,13 @@ class ComputeStatus:
     gpu_vram_total_gb: Optional[float] = None
     gpu_vram_free_gb: Optional[float] = None
     recommendation_tier: str = ""
-    recommendation_detail: str = ""
-    warnings: List[str] = field(default_factory=list)
+    warnings: List[Dict[str, Any]] = field(default_factory=list)
 
 
-def _detect_gpu() -> "tuple[bool, List[str], str, Optional[float], Optional[float]]":
+def _detect_gpu() -> Tuple[bool, List[str], str, Optional[float], Optional[float]]:
     # Prefer torch if it happens to be installed - most accurate, and gives
     # us free memory too (via torch.cuda.mem_get_info).
+    torch_says_no_gpu = False
     try:
         import torch  # type: ignore
 
@@ -53,14 +45,16 @@ def _detect_gpu() -> "tuple[bool, List[str], str, Optional[float], Optional[floa
             vram_total_gb = round(total_bytes / (1024 ** 3), 2)
             vram_free_gb = round(free_bytes / (1024 ** 3), 2)
             return True, names, "torch", vram_total_gb, vram_free_gb
-        return False, [], "torch", None, None
+        # Torch installed but reports no CUDA - could still be a CPU-only
+        # build on a machine that has an NVIDIA card. Fall through to
+        # nvidia-smi rather than concluding "no GPU" too early.
+        torch_says_no_gpu = True
     except ImportError:
         pass
 
     # Fall back to nvidia-smi presence, which works even without torch/CUDA
     # python bindings installed - tells us "there is NVIDIA hardware here"
-    # even if the training stack isn't set up yet. This also gives us VRAM
-    # numbers via a second nvidia-smi query.
+    # even if the training stack isn't set up yet.
     if shutil.which("nvidia-smi"):
         try:
             result = subprocess.run(
@@ -94,60 +88,30 @@ def _detect_gpu() -> "tuple[bool, List[str], str, Optional[float], Optional[floa
                             vram_free_gb = round(free_mib / 1024, 2)
                     except (subprocess.TimeoutExpired, OSError, ValueError, IndexError):
                         pass
-                    return True, names, "nvidia-smi", vram_total_gb, vram_free_gb
+                    method = "nvidia-smi" if not torch_says_no_gpu else "nvidia-smi-after-torch"
+                    return True, names, method, vram_total_gb, vram_free_gb
         except (subprocess.TimeoutExpired, OSError):
             pass
 
-    return False, [], "none", None, None
+    method = "torch" if torch_says_no_gpu else "none"
+    return False, [], method, None, None
 
 
-def _recommend(ram_gb: float, gpu_available: bool, gpu_names: List[str]) -> "tuple[str, str]":
+def _recommend_tier(ram_gb: float, gpu_available: bool) -> str:
+    """
+    Returns only a machine-readable tier code. The human-readable text for
+    each tier lives in the frontend i18n resources under
+    `compute.recommendation.<tier>`.
+    """
     if gpu_available:
-        return (
-            "gpu",
-            "GPU обнаружен ("
-            + ", ".join(gpu_names)
-            + "). В зависимости от объёма видеопамяти можно рассматривать "
-            "fine-tuning с LoRA/QLoRA для моделей вплоть до 7-13 млрд параметров, "
-            "либо полное обучение моделей меньшего размера. Конкретный список "
-            "доступных моделей рассчитывается по реальной свободной VRAM, "
-            "см. /compute/allowed-models.",
-        )
-
+        return "gpu"
     if ram_gb < 4:
-        return (
-            "minimal",
-            "GPU не обнаружен, доступной RAM меньше 4 ГБ. Реалистичны только "
-            "простейшие классические модели (логистическая регрессия, "
-            "неглубокие деревья решений) на небольших табличных датасетах. "
-            "Fine-tuning любых NLP/LLM моделей на этом сервере не рекомендуется.",
-        )
+        return "minimal"
     if ram_gb < 8:
-        return (
-            "cpu_classic",
-            "GPU не обнаружен, RAM ограничена. Хорошо подходит классический "
-            "ML (scikit-learn, XGBoost) на табличных данных. Инференс "
-            "небольших NLP-моделей (DistilBERT-класса) возможен, но их "
-            "обучение на CPU будет медленным и годится только для очень "
-            "маленьких датасетов.",
-        )
+        return "cpu_classic"
     if ram_gb < 16:
-        return (
-            "cpu_light_nlp",
-            "GPU не обнаружен, но RAM достаточно для классического ML в "
-            "полном объёме. Лёгкий fine-tuning совсем небольших NLP-моделей "
-            "на CPU технически возможен, но будет занимать часы даже на "
-            "скромных датасетах - используйте это только для экспериментов, "
-            "не для регулярного обучения.",
-        )
-    return (
-        "cpu_generous",
-        "GPU не обнаружен, но объём RAM достаточно большой. Классический ML "
-        "без практических ограничений по памяти. CPU-обучение небольших "
-        "transformer-моделей возможно, однако по скорости остаётся на "
-        "порядки медленнее GPU - для серьёзного fine-tuning LLM "
-        "по-прежнему рекомендуется облачный GPU.",
-    )
+        return "cpu_light_nlp"
+    return "cpu_generous"
 
 
 def get_status() -> ComputeStatus:
@@ -163,25 +127,15 @@ def get_status() -> ComputeStatus:
     disk_free_gb = round(disk.free / (1024 ** 3), 2)
 
     gpu_available, gpu_names, gpu_method, vram_total_gb, vram_free_gb = _detect_gpu()
-    tier, detail = _recommend(ram_total_gb, gpu_available, gpu_names)
+    tier = _recommend_tier(ram_total_gb, gpu_available)
 
-    warnings: List[str] = []
+    warnings: List[Dict[str, Any]] = []
     if disk_free_gb < 5:
-        warnings.append(
-            f"Свободного места на диске мало ({disk_free_gb} ГБ) - "
-            "загрузка датасетов или сохранение артефактов моделей может не пройти."
-        )
+        warnings.append({"code": "low_disk", "disk_free_gb": disk_free_gb})
     if not gpu_available:
-        warnings.append(
-            "GPU не обнаружен: fine-tuning больших LLM (даже с LoRA/QLoRA) "
-            "на этом сервере невозможен. Рассмотрите облачный GPU для таких задач."
-        )
+        warnings.append({"code": "no_gpu"})
     elif vram_free_gb is not None and vram_free_gb < 2:
-        warnings.append(
-            f"Свободной VRAM мало ({vram_free_gb} ГБ) - даже маленькие "
-            "модели могут не поместиться, особенно если на GPU уже что-то "
-            "выполняется."
-        )
+        warnings.append({"code": "low_vram", "vram_free_gb": vram_free_gb})
 
     return ComputeStatus(
         cpu_logical_cores=cpu_logical,
@@ -196,6 +150,5 @@ def get_status() -> ComputeStatus:
         gpu_vram_total_gb=vram_total_gb,
         gpu_vram_free_gb=vram_free_gb,
         recommendation_tier=tier,
-        recommendation_detail=detail,
         warnings=warnings,
     )

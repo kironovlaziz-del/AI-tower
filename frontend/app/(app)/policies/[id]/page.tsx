@@ -1,8 +1,10 @@
 "use client";
 
+import { Form } from "@/components/Form";
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusPill } from "@/components/Pill";
 import {
@@ -16,6 +18,7 @@ import type { Policy, PolicyVersion } from "@/lib/types";
 export default function PolicyDetailPage() {
   const params = useParams<{ id: string }>();
   const policyId = Number(params.id);
+  const { t, i18n } = useTranslation();
 
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [versions, setVersions] = useState<PolicyVersion[]>([]);
@@ -48,7 +51,7 @@ export default function PolicyDetailPage() {
     try {
       parsed = JSON.parse(rulesText);
     } catch {
-      setError("Правила должны быть корректным JSON.");
+      setError(t("policies.detail.invalid_json"));
       return;
     }
     setSubmitting(true);
@@ -56,7 +59,7 @@ export default function PolicyDetailPage() {
       await createPolicyVersion(policyId, parsed);
       refresh();
     } catch {
-      setError("Не удалось создать версию.");
+      setError(t("policies.detail.create_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -70,9 +73,9 @@ export default function PolicyDetailPage() {
   if (loading || !policy) {
     return (
       <>
-        <PageHeader title="Политика" />
+        <PageHeader title={t("policies.title")} />
         <div className="content">
-          <p className="loading-line">Загрузка…</p>
+          <p className="loading-line">{t("policies.detail.loading")}</p>
         </div>
       </>
     );
@@ -83,21 +86,21 @@ export default function PolicyDetailPage() {
       <PageHeader title={policy.name} />
       <div className="content">
         <div className="breadcrumb">
-          <Link href="/policies">Policy Center</Link> / #{policy.id}
+          <Link href="/policies">{t("policies.detail.breadcrumb")}</Link> / #{policy.id}
         </div>
 
         <div className="panel" style={{ marginBottom: 20 }}>
           <div className="panel-body">
             <dl className="kv-grid">
-              <dt>Статус</dt>
+              <dt>{t("policies.detail.status")}</dt>
               <dd>
                 <StatusPill status={policy.status} />
               </dd>
-              <dt>Описание</dt>
+              <dt>{t("policies.detail.description")}</dt>
               <dd>{policy.description || "—"}</dd>
-              <dt>Создана</dt>
+              <dt>{t("policies.detail.created")}</dt>
               <dd className="mono">
-                {new Date(policy.created_at).toLocaleString("ru-RU")}
+                {new Date(policy.created_at).toLocaleString(i18n.language)}
               </dd>
             </dl>
           </div>
@@ -105,12 +108,12 @@ export default function PolicyDetailPage() {
 
         <div className="panel" style={{ marginBottom: 20 }}>
           <div className="panel-header">
-            <h2>Новая версия правил</h2>
+            <h2>{t("policies.detail.new_version_title")}</h2>
           </div>
           <div className="panel-body">
-            <form onSubmit={handleCreateVersion}>
+            <Form onSubmit={handleCreateVersion}>
               <div className="field">
-                <label htmlFor="rules">Правила (JSON)</label>
+                <label htmlFor="rules">{t("policies.detail.rules")}</label>
                 <textarea
                   id="rules"
                   className="mono"
@@ -118,37 +121,36 @@ export default function PolicyDetailPage() {
                   value={rulesText}
                   onChange={(e) => setRulesText(e.target.value)}
                 />
-                <span className="hint-text">
-                  Например: {"{ \"effect\": \"require_approval\" }"} — заставит
-                  привязанные сценарии проходить согласование.
-                </span>
+                <span className="hint-text">{t("policies.detail.rules_hint")}</span>
               </div>
               {error && <p className="error-text">{error}</p>}
               <button className="btn btn-primary" type="submit" disabled={submitting}>
-                {submitting ? "Сохраняем…" : "Создать версию"}
+                {submitting
+                  ? t("policies.detail.creating_version")
+                  : t("policies.detail.create_version")}
               </button>
-            </form>
+            </Form>
           </div>
         </div>
 
         <div className="panel">
           <div className="panel-header">
-            <h2>История версий</h2>
+            <h2>{t("policies.detail.history_title")}</h2>
           </div>
           <table>
             <thead>
               <tr>
-                <th>Версия</th>
-                <th>Правила</th>
-                <th>Создана</th>
-                <th>Согласование</th>
+                <th>{t("policies.detail.col_version")}</th>
+                <th>{t("policies.detail.col_rules")}</th>
+                <th>{t("policies.detail.col_created")}</th>
+                <th>{t("policies.detail.col_approval")}</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {versions.length === 0 && (
                 <tr className="empty-row">
-                  <td colSpan={5}>Версий пока нет</td>
+                  <td colSpan={5}>{t("policies.detail.empty_versions")}</td>
                 </tr>
               )}
               {versions.map((v) => (
@@ -156,13 +158,17 @@ export default function PolicyDetailPage() {
                   <td className="mono">v{v.version}</td>
                   <td className="mono">{JSON.stringify(v.rules_json)}</td>
                   <td className="mono">
-                    {new Date(v.created_at).toLocaleString("ru-RU")}
+                    {new Date(v.created_at).toLocaleString(i18n.language)}
                   </td>
                   <td>
                     {v.approved_at ? (
-                      <span className="pill pill-low">approved</span>
+                      <span className="pill pill-low">
+                        {t("policies.detail.approved")}
+                      </span>
                     ) : (
-                      <span className="pill pill-neutral">pending</span>
+                      <span className="pill pill-neutral">
+                        {t("policies.detail.pending")}
+                      </span>
                     )}
                   </td>
                   <td>
@@ -171,7 +177,7 @@ export default function PolicyDetailPage() {
                         className="btn btn-sm"
                         onClick={() => handleApprove(v.id)}
                       >
-                        Согласовать
+                        {t("policies.detail.approve")}
                       </button>
                     )}
                   </td>

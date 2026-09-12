@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { RiskPill, StatusPill } from "@/components/Pill";
 import {
@@ -14,6 +15,7 @@ import {
 import type { AIRequest, Approval, Incident, Policy, UseCase } from "@/lib/types";
 
 export default function DashboardPage() {
+  const { t, i18n } = useTranslation();
   const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [requests, setRequests] = useState<AIRequest[]>([]);
   const [approvals, setApprovals] = useState<Approval[]>([]);
@@ -45,56 +47,56 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader title="Панель управления" />
+      <PageHeader title={t("dashboard.title")} />
       <div className="content">
         {loading ? (
-          <p className="loading-line">Загрузка данных…</p>
+          <p className="loading-line">{t("dashboard.loading")}</p>
         ) : (
           <>
             <div className="stat-grid">
               <div className="stat">
-                <div className="stat-label">Сценарии использования</div>
+                <div className="stat-label">{t("dashboard.stat_use_cases")}</div>
                 <div className="stat-value">{useCases.length}</div>
               </div>
               <div className="stat">
-                <div className="stat-label">Запросов в реестре</div>
+                <div className="stat-label">{t("dashboard.stat_requests")}</div>
                 <div className="stat-value">{requests.length}</div>
               </div>
               <div className="stat">
-                <div className="stat-label">Ожидают согласования</div>
+                <div className="stat-label">{t("dashboard.stat_pending")}</div>
                 <div className="stat-value">{pendingApprovals}</div>
               </div>
               <div className="stat">
-                <div className="stat-label">Открытые инциденты</div>
+                <div className="stat-label">{t("dashboard.stat_incidents")}</div>
                 <div className="stat-value">{openIncidents}</div>
               </div>
               <div className="stat">
-                <div className="stat-label">Политики</div>
+                <div className="stat-label">{t("dashboard.stat_policies")}</div>
                 <div className="stat-value">{policies.length}</div>
               </div>
             </div>
 
             <div className="panel">
               <div className="panel-header">
-                <h2>Последние запросы (Action Trace)</h2>
+                <h2>{t("dashboard.recent_requests")}</h2>
                 <Link href="/requests" className="btn btn-sm">
-                  Весь реестр
+                  {t("dashboard.view_all")}
                 </Link>
               </div>
               <table>
                 <thead>
                   <tr>
-                    <th>ID</th>
-                    <th>Назначение</th>
-                    <th>Риск</th>
-                    <th>Статус</th>
-                    <th>Создан</th>
+                    <th>{t("dashboard.col_id")}</th>
+                    <th>{t("dashboard.col_purpose")}</th>
+                    <th>{t("dashboard.col_risk")}</th>
+                    <th>{t("dashboard.col_status")}</th>
+                    <th>{t("dashboard.col_created")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentRequests.length === 0 && (
                     <tr className="empty-row">
-                      <td colSpan={5}>Пока нет запросов в реестре использования</td>
+                      <td colSpan={5}>{t("dashboard.empty_requests")}</td>
                     </tr>
                   )}
                   {recentRequests.map((r) => (
@@ -112,7 +114,7 @@ export default function DashboardPage() {
                         <StatusPill status={r.status} />
                       </td>
                       <td className="mono">
-                        {new Date(r.created_at).toLocaleString("ru-RU")}
+                        {new Date(r.created_at).toLocaleString(i18n.language)}
                       </td>
                     </tr>
                   ))}

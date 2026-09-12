@@ -1,4 +1,7 @@
+"use client";
+
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 const RISK_CLASS: Record<string, string> = {
   low: "pill-low",
@@ -35,13 +38,19 @@ const STATUS_CLASS: Record<string, string> = {
 };
 
 export function RiskPill({ level }: { level: string }) {
-  return <span className={`pill ${RISK_CLASS[level] ?? "pill-neutral"}`}>{level}</span>;
+  const { t } = useTranslation();
+  return (
+    <span className={`pill ${RISK_CLASS[level] ?? "pill-neutral"}`}>
+      {t(`risk.${level}`, level)}
+    </span>
+  );
 }
 
 export function StatusPill({ status }: { status: string }) {
+  const { t } = useTranslation();
   return (
     <span className={`pill ${STATUS_CLASS[status] ?? "pill-neutral"}`}>
-      {status.replace(/_/g, " ")}
+      {t(`status.${status}`, status)}
     </span>
   );
 }

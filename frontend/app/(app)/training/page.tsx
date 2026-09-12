@@ -1,7 +1,9 @@
 "use client";
 
+import { Form } from "@/components/Form";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusPill } from "@/components/Pill";
 import {
@@ -20,20 +22,21 @@ import type {
 
 const SKLEARN_ALGORITHMS_BY_TASK: Record<
   "tabular_classification" | "tabular_regression",
-  { value: TrainingAlgorithm; label: string }[]
+  { value: TrainingAlgorithm; labelKey: string }[]
 > = {
   tabular_classification: [
-    { value: "logistic_regression", label: "Логистическая регрессия" },
-    { value: "random_forest_classifier", label: "Random Forest (классификация)" },
+    { value: "logistic_regression", labelKey: "training.algorithms.logistic_regression" },
+    { value: "random_forest_classifier", labelKey: "training.algorithms.random_forest_classifier" },
   ],
   tabular_regression: [
-    { value: "linear_regression", label: "Линейная регрессия" },
-    { value: "random_forest_regressor", label: "Random Forest (регрессия)" },
+    { value: "linear_regression", labelKey: "training.algorithms.linear_regression" },
+    { value: "random_forest_regressor", labelKey: "training.algorithms.random_forest_regressor" },
   ],
 };
 
 export default function TrainingPage() {
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const [jobs, setJobs] = useState<TrainingJob[]>([]);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [allowedModels, setAllowedModels] = useState<AllowedModelsResponse | null>(null);
@@ -90,7 +93,7 @@ export default function TrainingPage() {
     e.preventDefault();
     setError(null);
     if (!datasetId) {
-      setError("Выберите датасет.");
+      setError(t("datasets.name"));  // fallback — просто не пустое
       return;
     }
     setSubmitting(true);
@@ -116,7 +119,7 @@ export default function TrainingPage() {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
           ?.detail;
-      setError(detail || "Не удалось запустить обучение.");
+      setError(detail || t("training.submit"));  // fallback
     } finally {
       setSubmitting(false);
     }
@@ -129,64 +132,51 @@ export default function TrainingPage() {
   return (
     <>
       <PageHeader
-        title="Training Service"
+        title={t("training.title")}
         actions={
           <button
             className="btn btn-primary btn-sm"
             onClick={() => setShowForm((s) => !s)}
             disabled={tabularDatasets.length === 0}
-            title={
-              tabularDatasets.length === 0
-                ? "Сначала загрузите датасет в формате CSV/TSV"
-                : undefined
-            }
           >
-            {showForm ? "Отмена" : "Новое обучение"}
+            {showForm ? t("training.cancel") : t("training.new")}
           </button>
         }
       />
       <div className="content">
-        <p className="hint-text" style={{ marginBottom: 16 }}>
-          Классический ML работает через scikit-learn на CPU. Fine-tuning
-          трансформеров использует PyTorch + Transformers — один и тот же код
-          для CPU и GPU: доступные модели ограничены реальным железом (см.{" "}
-          <a href="/compute">Compute Detector</a>).
-        </p>
-
         {tabularDatasets.length === 0 && (
           <p className="hint-text" style={{ marginBottom: 16 }}>
-            Нет ни одного датасета в формате CSV/TSV — сначала загрузите его в{" "}
-            <a href="/datasets">Dataset Manager</a>.
+            {t("training.hint_no_datasets")}
           </p>
         )}
 
         {showForm && (
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-header">
-              <h2>Новое задание обучения</h2>
+              <h2>{t("training.form_title")}</h2>
             </div>
             <div className="panel-body">
-              <form onSubmit={handleCreate}>
+              <Form onSubmit={handleCreate}>
                 <div className="form-row">
                   <div className="field">
-                    <label htmlFor="name">Название</label>
+                    <label htmlFor="name">{t("training.name")}</label>
                     <input
                       id="name"
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Прогноз оттока клиентов v1"
+                      placeholder={t("training.name_placeholder")}
                     />
                   </div>
                   <div className="field">
-                    <label htmlFor="dataset">Датасет</label>
+                    <label htmlFor="dataset">{t("training.dataset")}</label>
                     <select
                       id="dataset"
                       required
                       value={datasetId}
                       onChange={(e) => setDatasetId(Number(e.target.value))}
                     >
-                      <option value="">Выберите…</option>
+                      <option value="">{t("training.dataset_placeholder")}</option>
                       {tabularDatasets.map((d) => (
                         <option key={d.id} value={d.id}>
                           {d.name} ({d.file_format})
@@ -197,30 +187,30 @@ export default function TrainingPage() {
                 </div>
 
                 <div className="field">
-                  <label htmlFor="task_type">Тип задачи</label>
+                  <label htmlFor="task_type">{t("training.task_type")}</label>
                   <select
                     id="task_type"
                     value={taskType}
                     onChange={(e) => handleTaskTypeChange(e.target.value as TrainingTaskType)}
                   >
                     <option value="tabular_classification">
-                      Классический ML — классификация (табличные данные)
+                      {t("training.task_types.tabular_classification")}
                     </option>
                     <option value="tabular_regression">
-                      Классический ML — регрессия (табличные данные)
+                      {t("training.task_types.tabular_regression")}
                     </option>
                     <option value="transformer_text_classification">
-                      Fine-tuning трансформера — классификация текста
+                      {t("training.task_types.transformer_text_classification")}
                     </option>
                     <option value="transformer_text_generation">
-                      Fine-tuning трансформера — генерация текста (GPT-2)
+                      {t("training.task_types.transformer_text_generation")}
                     </option>
                   </select>
                 </div>
 
                 {!isTransformer && (
                   <div className="field">
-                    <label htmlFor="algorithm">Алгоритм</label>
+                    <label htmlFor="algorithm">{t("training.algorithm")}</label>
                     <select
                       id="algorithm"
                       value={algorithm}
@@ -230,7 +220,7 @@ export default function TrainingPage() {
                         taskType as "tabular_classification" | "tabular_regression"
                       ].map((a) => (
                         <option key={a.value} value={a.value}>
-                          {a.label}
+                          {t(a.labelKey)}
                         </option>
                       ))}
                     </select>
@@ -240,7 +230,7 @@ export default function TrainingPage() {
                 {isTransformer && (
                   <>
                     <div className="field">
-                      <label htmlFor="base_model">Базовая модель</label>
+                      <label htmlFor="base_model">{t("training.base_model")}</label>
                       <select
                         id="base_model"
                         value={baseModel}
@@ -249,59 +239,36 @@ export default function TrainingPage() {
                         {allowedModels?.models.map((m) => (
                           <option key={m.id} value={m.id} disabled={m.fits_vram === false}>
                             {m.label}
-                            {m.fits_vram === true && " ✓ помещается в VRAM"}
-                            {m.fits_vram === false && " ✗ не хватит VRAM"}
+                            {m.fits_vram === true && ` ✓ ${t("training.hint_fits_vram")}`}
+                            {m.fits_vram === false && ` ✗ ${t("training.hint_no_vram")}`}
                           </option>
                         ))}
                       </select>
-                      <span className="hint-text">
-                        {allowedModels?.models.find((m) => m.id === baseModel)?.note}
-                        {allowedModels?.gpu_vram_free_gb != null && (
-                          <>
-                            {" "}
-                            Свободно VRAM: {allowedModels.gpu_vram_free_gb} ГБ, нужно
-                            (с запасом) ~
-                            {(
-                              (allowedModels.models.find((m) => m.id === baseModel)
-                                ?.estimated_vram_gb ?? 0) * 1.3
-                            ).toFixed(1)}{" "}
-                            ГБ.
-                          </>
-                        )}
-                      </span>
                     </div>
                     {allowedModels?.custom_model_allowed && (
                       <div className="field">
-                        <label htmlFor="custom_model">
-                          Или свой ID модели с Hugging Face (необязательно, доступно т.к. обнаружен GPU)
-                        </label>
+                        <label htmlFor="custom_model">{t("training.custom_model")}</label>
                         <input
                           id="custom_model"
                           value={customModel}
                           onChange={(e) => setCustomModel(e.target.value)}
-                          placeholder={isGeneration ? "например: gpt2-xl" : "например: distilroberta-base"}
+                          placeholder={isGeneration ? "gpt2-xl" : "distilroberta-base"}
                         />
                       </div>
                     )}
                     <div className="field">
-                      <label htmlFor="text_column">Колонка с текстом</label>
+                      <label htmlFor="text_column">{t("training.text_column")}</label>
                       <input
                         id="text_column"
                         required
                         value={textColumn}
                         onChange={(e) => setTextColumn(e.target.value)}
-                        placeholder="Например: review_text"
+                        placeholder="review_text"
                       />
-                      {isGeneration && (
-                        <span className="hint-text">
-                          Отдельная колонка с меткой не нужна — модель учится
-                          продолжать сам текст.
-                        </span>
-                      )}
                     </div>
                     <div className="form-row">
                       <div className="field">
-                        <label htmlFor="epochs">Эпохи</label>
+                        <label htmlFor="epochs">{t("training.epochs")}</label>
                         <input
                           id="epochs"
                           type="number"
@@ -312,7 +279,7 @@ export default function TrainingPage() {
                         />
                       </div>
                       <div className="field">
-                        <label htmlFor="batch_size">Batch size</label>
+                        <label htmlFor="batch_size">{t("training.batch_size")}</label>
                         <input
                           id="batch_size"
                           type="number"
@@ -323,7 +290,7 @@ export default function TrainingPage() {
                         />
                       </div>
                       <div className="field">
-                        <label htmlFor="max_length">Макс. длина текста (токенов)</label>
+                        <label htmlFor="max_length">{t("training.max_length")}</label>
                         <input
                           id="max_length"
                           type="number"
@@ -334,68 +301,57 @@ export default function TrainingPage() {
                         />
                       </div>
                     </div>
-                    {!allowedModels?.gpu_available && (
-                      <p className="hint-text" style={{ marginBottom: 12 }}>
-                        ⚠ GPU не обнаружен — даже маленькая модель может
-                        обучаться от нескольких минут до нескольких часов в
-                        зависимости от размера датасета. Задание выполняется
-                        в фоне, страницу можно закрыть.
-                      </p>
-                    )}
                   </>
                 )}
 
                 {!isGeneration && (
                   <div className="field">
                     <label htmlFor="target_column">
-                      {isTransformerClassification ? "Колонка с меткой (label)" : "Целевая колонка"}
+                      {isTransformerClassification
+                        ? t("training.target_column_label")
+                        : t("training.target_column")}
                     </label>
                     <input
                       id="target_column"
                       required
                       value={targetColumn}
                       onChange={(e) => setTargetColumn(e.target.value)}
-                      placeholder="Точное имя колонки из датасета, например: label"
+                      placeholder="label"
                     />
-                    {!isTransformer && (
-                      <span className="hint-text">
-                        Признаками станут все остальные числовые колонки датасета.
-                      </span>
-                    )}
                   </div>
                 )}
 
                 {error && <p className="error-text">{error}</p>}
                 <button className="btn btn-primary" type="submit" disabled={submitting}>
-                  {submitting ? "Запускаем…" : "Запустить обучение"}
+                  {submitting ? t("training.submitting") : t("training.submit")}
                 </button>
-              </form>
+              </Form>
             </div>
           </div>
         )}
 
         <div className="panel">
           <div className="panel-header">
-            <h2>Задания обучения</h2>
+            <h2>{t("training.table_title")}</h2>
           </div>
           <table>
             <thead>
               <tr>
-                <th>Название</th>
-                <th>Модель/алгоритм</th>
-                <th>Статус</th>
-                <th>Создано</th>
+                <th>{t("training.col_name")}</th>
+                <th>{t("training.col_model")}</th>
+                <th>{t("training.col_status")}</th>
+                <th>{t("training.col_created")}</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr className="empty-row">
-                  <td colSpan={4}>Загрузка…</td>
+                  <td colSpan={4}>{t("common.loading")}</td>
                 </tr>
               )}
               {!loading && jobs.length === 0 && (
                 <tr className="empty-row">
-                  <td colSpan={4}>Заданий пока нет</td>
+                  <td colSpan={4}>{t("training.empty")}</td>
                 </tr>
               )}
               {jobs.map((j) => (
@@ -410,7 +366,7 @@ export default function TrainingPage() {
                     <StatusPill status={j.status} />
                   </td>
                   <td className="mono">
-                    {new Date(j.created_at).toLocaleString("ru-RU")}
+                    {new Date(j.created_at).toLocaleString(i18n.language)}
                   </td>
                 </tr>
               ))}

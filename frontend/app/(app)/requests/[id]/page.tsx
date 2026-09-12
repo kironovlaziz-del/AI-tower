@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { RiskPill, StatusPill } from "@/components/Pill";
 import {
@@ -15,16 +16,11 @@ import {
 import { useAuth } from "@/lib/auth";
 import type { AIRequest, AIResponse, Override } from "@/lib/types";
 
-const OVERRIDE_LABEL: Record<string, string> = {
-  stop: "остановлен оператором",
-  edit: "промпт изменён оператором",
-  rollback: "откачен оператором",
-};
-
 export default function RequestDetailPage() {
   const params = useParams<{ id: string }>();
   const requestId = Number(params.id);
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
 
   const [request, setRequest] = useState<AIRequest | null>(null);
   const [response, setResponse] = useState<AIResponse | null>(null);
@@ -75,7 +71,7 @@ export default function RequestDetailPage() {
       await createOverride({ request_id: requestId, override_type: "stop" });
       refresh();
     } catch {
-      setOverrideError("Не удалось остановить запрос.");
+      setOverrideError(t("requests.detail.stop_failed"));
     } finally {
       setOverrideBusy(false);
     }
@@ -88,7 +84,7 @@ export default function RequestDetailPage() {
       await createOverride({ request_id: requestId, override_type: "rollback" });
       refresh();
     } catch {
-      setOverrideError("Не удалось откатить запрос.");
+      setOverrideError(t("requests.detail.rollback_failed"));
     } finally {
       setOverrideBusy(false);
     }
@@ -106,7 +102,7 @@ export default function RequestDetailPage() {
       setEditMode(false);
       refresh();
     } catch {
-      setOverrideError("Не удалось изменить текст промпта.");
+      setOverrideError(t("requests.detail.edit_failed"));
     } finally {
       setOverrideBusy(false);
     }
@@ -115,9 +111,9 @@ export default function RequestDetailPage() {
   if (loading || !request) {
     return (
       <>
-        <PageHeader title="Action Trace" />
+        <PageHeader title={t("requests.title")} />
         <div className="content">
-          <p className="loading-line">Загрузка…</p>
+          <p className="loading-line">{t("requests.detail.loading")}</p>
         </div>
       </>
     );
@@ -128,38 +124,38 @@ export default function RequestDetailPage() {
 
   return (
     <>
-      <PageHeader title={`Запрос #${request.id}`} />
+      <PageHeader title={`#${request.id}`} />
       <div className="content">
         <div className="breadcrumb">
-          <Link href="/requests">Usage Registry</Link> / #{request.id}
+          <Link href="/requests">{t("requests.detail.breadcrumb")}</Link> / #{request.id}
         </div>
 
         <div className="panel" style={{ marginBottom: 20 }}>
           <div className="panel-header">
-            <h2>1. Запрос</h2>
+            <h2>{t("requests.detail.request_section")}</h2>
           </div>
           <div className="panel-body">
             <dl className="kv-grid">
-              <dt>Назначение</dt>
+              <dt>{t("requests.detail.purpose")}</dt>
               <dd>{request.purpose}</dd>
-              <dt>Уровень риска</dt>
+              <dt>{t("requests.detail.risk")}</dt>
               <dd>
                 <RiskPill level={request.risk_level} />
               </dd>
-              <dt>Статус</dt>
+              <dt>{t("requests.detail.status")}</dt>
               <dd>
                 <StatusPill status={request.status} />
               </dd>
-              <dt>Сценарий</dt>
+              <dt>{t("requests.detail.use_case")}</dt>
               <dd className="mono">#{request.use_case_id ?? "—"}</dd>
-              <dt>Поставщик</dt>
+              <dt>{t("requests.detail.provider")}</dt>
               <dd className="mono">#{request.provider_id ?? "—"}</dd>
-              <dt>Создан</dt>
+              <dt>{t("requests.detail.created")}</dt>
               <dd className="mono">
-                {new Date(request.created_at).toLocaleString("ru-RU")}
+                {new Date(request.created_at).toLocaleString(i18n.language)}
               </dd>
             </dl>
-            <div className="section-title">Промпт (после маскирования Prompt Firewall)</div>
+            <div className="section-title">{t("requests.detail.prompt_section")}</div>
             {editMode ? (
               <>
                 <textarea
@@ -175,7 +171,7 @@ export default function RequestDetailPage() {
                     onClick={handleSaveEdit}
                     disabled={overrideBusy}
                   >
-                    {overrideBusy ? "Сохраняем…" : "Сохранить"}
+                    {overrideBusy ? t("common.save") + "…" : t("common.save")}
                   </button>
                   <button
                     className="btn btn-sm"
@@ -184,7 +180,7 @@ export default function RequestDetailPage() {
                       setEditText(request.masked_input_text || request.input_text || "");
                     }}
                   >
-                    Отмена
+                    {t("common.cancel")}
                   </button>
                 </div>
               </>
@@ -195,7 +191,7 @@ export default function RequestDetailPage() {
             )}
             {request.firewall_flags && request.firewall_flags.length > 0 && (
               <>
-                <div className="section-title">Флаги Prompt Firewall</div>
+                <div className="section-title">{t("requests.detail.flags_section")}</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {request.firewall_flags.map((flag) => (
                     <span
@@ -216,14 +212,10 @@ export default function RequestDetailPage() {
         {request.status === "blocked" && (
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-header">
-              <h2>Заблокировано Prompt Firewall</h2>
+              <h2>{t("requests.detail.blocked_title")}</h2>
             </div>
             <div className="panel-body">
-              <p className="hint-text">
-                Промпт содержит термин из блок-листа активной политики и не был
-                отправлен поставщику. Исходный текст сохранён только для
-                расследования и недоступен провайдеру.
-              </p>
+              <p className="hint-text">{t("requests.detail.blocked_hint")}</p>
             </div>
           </div>
         )}
@@ -231,14 +223,10 @@ export default function RequestDetailPage() {
         {request.status === "failed" && (
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-header">
-              <h2>Ошибка вызова подключения</h2>
+              <h2>{t("requests.detail.failed_title")}</h2>
             </div>
             <div className="panel-body">
-              <p className="hint-text">
-                Реальный вызов AI-провайдера завершился ошибкой (см. текст
-                ответа ниже). Проверьте API-ключ и base URL на странице{" "}
-                <a href="/connections">Connections</a>.
-              </p>
+              <p className="hint-text">{t("requests.detail.failed_hint")}</p>
             </div>
           </div>
         )}
@@ -246,14 +234,20 @@ export default function RequestDetailPage() {
         {request.status === "pending_approval" && (
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-header">
-              <h2>2. Approval Workflow</h2>
+              <h2>{t("requests.detail.approval_section")}</h2>
             </div>
             <div className="panel-body">
               <p className="hint-text" style={{ marginBottom: 12 }}>
-                Политика требует согласования перед выполнением этого запроса.
+                {t("requests.detail.approval_hint")}
               </p>
-              <button className="btn btn-primary" onClick={handleRouteToApproval} disabled={routing}>
-                {routing ? "Отправляем…" : "Отправить на согласование"}
+              <button
+                className="btn btn-primary"
+                onClick={handleRouteToApproval}
+                disabled={routing}
+              >
+                {routing
+                  ? t("requests.detail.sending")
+                  : t("requests.detail.send_to_approval")}
               </button>
             </div>
           </div>
@@ -261,82 +255,82 @@ export default function RequestDetailPage() {
 
         <div className="panel" style={{ marginBottom: 20 }}>
           <div className="panel-header">
-            <h2>3. Ответ провайдера</h2>
+            <h2>{t("requests.detail.response_section")}</h2>
           </div>
           <div className="panel-body">
             {response ? (
               <>
                 <dl className="kv-grid">
-                  <dt>Уверенность</dt>
+                  <dt>{t("requests.detail.confidence")}</dt>
                   <dd className="mono">
                     {response.confidence_score != null
                       ? response.confidence_score.toFixed(2)
                       : "—"}
                   </dd>
-                  <dt>Получен</dt>
+                  <dt>{t("requests.detail.received")}</dt>
                   <dd className="mono">
-                    {new Date(response.created_at).toLocaleString("ru-RU")}
+                    {new Date(response.created_at).toLocaleString(i18n.language)}
                   </dd>
                 </dl>
-                <div className="section-title">Текст ответа</div>
+                <div className="section-title">{t("requests.detail.response_text")}</div>
                 <div className="text-block">{response.response_text || "—"}</div>
               </>
             ) : (
-              <p className="hint-text">
-                Ответа пока нет — запрос ожидает согласования или обработки.
-              </p>
+              <p className="hint-text">{t("requests.detail.no_response")}</p>
             )}
           </div>
         </div>
 
         <div className="panel">
           <div className="panel-header">
-            <h2>Override Console</h2>
+            <h2>{t("requests.detail.override_title")}</h2>
           </div>
           <div className="panel-body">
             {!canStopOrEdit && !canRollback && (
               <p className="hint-text" style={{ marginBottom: 12 }}>
-                Для запроса в статусе «{request.status}» ручные действия недоступны.
+                {t("requests.detail.override_no_actions", { status: request.status })}
               </p>
             )}
             <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
               {canStopOrEdit && (
                 <button className="btn btn-danger btn-sm" onClick={handleStop} disabled={overrideBusy}>
-                  Остановить
+                  {t("requests.detail.stop")}
                 </button>
               )}
               {canStopOrEdit && !editMode && (
                 <button className="btn btn-sm" onClick={() => setEditMode(true)}>
-                  Изменить текст промпта
+                  {t("requests.detail.edit_prompt")}
                 </button>
               )}
               {canRollback && (
                 <button className="btn btn-danger btn-sm" onClick={handleRollback} disabled={overrideBusy}>
-                  Откатить
+                  {t("requests.detail.rollback")}
                 </button>
               )}
             </div>
             {overrideError && <p className="error-text">{overrideError}</p>}
 
-            <div className="section-title">История ручных действий</div>
+            <div className="section-title">{t("requests.detail.override_history")}</div>
             {overrides.length === 0 ? (
-              <p className="hint-text">Ручных вмешательств по этому запросу не было.</p>
+              <p className="hint-text">{t("requests.detail.no_overrides")}</p>
             ) : (
               <table>
                 <thead>
                   <tr>
-                    <th>Время</th>
-                    <th>Действие</th>
-                    <th>Оператор</th>
+                    <th>{t("requests.detail.col_time")}</th>
+                    <th>{t("requests.detail.col_action")}</th>
+                    <th>{t("requests.detail.col_operator")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {overrides.map((ov) => (
                     <tr key={ov.id}>
                       <td className="mono">
-                        {new Date(ov.created_at).toLocaleString("ru-RU")}
+                        {new Date(ov.created_at).toLocaleString(i18n.language)}
                       </td>
-                      <td>{OVERRIDE_LABEL[ov.override_type] ?? ov.override_type}</td>
+                      <td>
+                        {t(`requests.detail.override_labels.${ov.override_type}`, ov.override_type)}
+                      </td>
                       <td className="mono">
                         {ov.operator_user_id != null ? `#${ov.operator_user_id}` : "—"}
                       </td>

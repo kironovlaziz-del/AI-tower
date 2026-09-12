@@ -1,14 +1,16 @@
 "use client";
 
+import { Form } from "@/components/Form";
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { register } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const { login } = useAuth();
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     org_name: "",
     name: "",
@@ -33,7 +35,7 @@ export default function RegisterPage() {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
           ?.detail;
-      setError(detail || "Не удалось создать организацию.");
+      setError(detail || t("register.failed"));
       setSubmitting(false);
     }
   }
@@ -41,31 +43,32 @@ export default function RegisterPage() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <div className="auth-brand">AI CONTROL TOWER</div>
-        <h1 className="auth-title">Новая организация</h1>
-        <form onSubmit={handleSubmit}>
+        <div className="auth-brand">{t("auth.brand")}</div>
+        <LanguageSwitcher variant="light" />
+        <h1 className="auth-title">{t("register.title")}</h1>
+        <Form onSubmit={handleSubmit}>
           <div className="field">
-            <label htmlFor="org_name">Название организации</label>
+            <label htmlFor="org_name">{t("register.org_name")}</label>
             <input
               id="org_name"
               required
               value={form.org_name}
               onChange={(e) => update("org_name", e.target.value)}
-              placeholder="Acme Corp"
+              placeholder={t("register.org_name_placeholder")}
             />
           </div>
           <div className="field">
-            <label htmlFor="name">Ваше имя</label>
+            <label htmlFor="name">{t("register.your_name")}</label>
             <input
               id="name"
               required
               value={form.name}
               onChange={(e) => update("name", e.target.value)}
-              placeholder="Иван Иванов"
+              placeholder={t("register.your_name_placeholder")}
             />
           </div>
           <div className="field">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">{t("register.email")}</label>
             <input
               id="email"
               type="email"
@@ -76,7 +79,7 @@ export default function RegisterPage() {
             />
           </div>
           <div className="field">
-            <label htmlFor="password">Пароль</label>
+            <label htmlFor="password">{t("register.password")}</label>
             <input
               id="password"
               type="password"
@@ -84,7 +87,7 @@ export default function RegisterPage() {
               minLength={6}
               value={form.password}
               onChange={(e) => update("password", e.target.value)}
-              placeholder="Минимум 6 символов"
+              placeholder={t("register.password_hint")}
             />
           </div>
           {error && <p className="error-text">{error}</p>}
@@ -94,11 +97,12 @@ export default function RegisterPage() {
             style={{ width: "100%", justifyContent: "center", marginTop: 4 }}
             disabled={submitting}
           >
-            {submitting ? "Создаём…" : "Создать организацию"}
+            {submitting ? t("register.submitting") : t("register.submit")}
           </button>
-        </form>
+        </Form>
         <p className="auth-switch">
-          Уже есть аккаунт? <Link href="/login">Войти</Link>
+          {t("register.already_have")}{" "}
+          <Link href="/login">{t("register.login_link")}</Link>
         </p>
       </div>
     </div>

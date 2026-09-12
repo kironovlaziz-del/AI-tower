@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { RiskPill, StatusPill } from "@/components/Pill";
 import { getIncident, updateIncident } from "@/lib/api";
@@ -11,6 +12,7 @@ import type { Incident } from "@/lib/types";
 export default function IncidentDetailPage() {
   const params = useParams<{ id: string }>();
   const incidentId = Number(params.id);
+  const { t, i18n } = useTranslation();
 
   const [incident, setIncident] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,9 +49,9 @@ export default function IncidentDetailPage() {
   if (loading || !incident) {
     return (
       <>
-        <PageHeader title="Инцидент" />
+        <PageHeader title={t("incidents.title")} />
         <div className="content">
-          <p className="loading-line">Загрузка…</p>
+          <p className="loading-line">{t("incidents.detail.loading")}</p>
         </div>
       </>
     );
@@ -57,30 +59,30 @@ export default function IncidentDetailPage() {
 
   return (
     <>
-      <PageHeader title={`Инцидент #${incident.id}`} />
+      <PageHeader title={`#${incident.id}`} />
       <div className="content">
         <div className="breadcrumb">
-          <Link href="/incidents">Incident Tracker</Link> / #{incident.id}
+          <Link href="/incidents">{t("incidents.detail.breadcrumb")}</Link> / #{incident.id}
         </div>
 
         <div className="panel" style={{ marginBottom: 20 }}>
           <div className="panel-body">
             <dl className="kv-grid">
-              <dt>Категория</dt>
+              <dt>{t("incidents.detail.category")}</dt>
               <dd>{incident.category}</dd>
-              <dt>Описание</dt>
+              <dt>{t("incidents.detail.summary")}</dt>
               <dd>{incident.summary}</dd>
-              <dt>Влияние</dt>
+              <dt>{t("incidents.detail.impact")}</dt>
               <dd>{incident.impact || "—"}</dd>
-              <dt>Серьёзность</dt>
+              <dt>{t("incidents.detail.severity")}</dt>
               <dd>
                 <RiskPill level={incident.severity} />
               </dd>
-              <dt>Статус</dt>
+              <dt>{t("incidents.detail.status")}</dt>
               <dd>
                 <StatusPill status={incident.status} />
               </dd>
-              <dt>Связанный запрос</dt>
+              <dt>{t("incidents.detail.linked_request")}</dt>
               <dd className="mono">
                 {incident.request_id ? (
                   <Link href={`/requests/${incident.request_id}`}>
@@ -90,14 +92,14 @@ export default function IncidentDetailPage() {
                   "—"
                 )}
               </dd>
-              <dt>Создан</dt>
+              <dt>{t("incidents.detail.created")}</dt>
               <dd className="mono">
-                {new Date(incident.created_at).toLocaleString("ru-RU")}
+                {new Date(incident.created_at).toLocaleString(i18n.language)}
               </dd>
-              <dt>Закрыт</dt>
+              <dt>{t("incidents.detail.closed")}</dt>
               <dd className="mono">
                 {incident.resolved_at
-                  ? new Date(incident.resolved_at).toLocaleString("ru-RU")
+                  ? new Date(incident.resolved_at).toLocaleString(i18n.language)
                   : "—"}
               </dd>
             </dl>
@@ -106,28 +108,28 @@ export default function IncidentDetailPage() {
 
         <div className="panel">
           <div className="panel-header">
-            <h2>Расследование</h2>
+            <h2>{t("incidents.detail.investigation_title")}</h2>
           </div>
           <div className="panel-body">
             <div className="field">
-              <label htmlFor="root_cause">Первопричина</label>
+              <label htmlFor="root_cause">{t("incidents.detail.root_cause")}</label>
               <textarea
                 id="root_cause"
                 value={rootCause}
                 onChange={(e) => setRootCause(e.target.value)}
-                placeholder="Что послужило причиной инцидента"
+                placeholder={t("incidents.detail.root_cause_placeholder")}
               />
             </div>
             <div className="field" style={{ maxWidth: 220 }}>
-              <label htmlFor="status">Статус</label>
+              <label htmlFor="status">{t("incidents.detail.status_label")}</label>
               <select id="status" value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="open">open</option>
-                <option value="investigating">investigating</option>
-                <option value="resolved">resolved</option>
+                <option value="open">{t("status.open")}</option>
+                <option value="investigating">{t("status.investigating")}</option>
+                <option value="resolved">{t("status.resolved")}</option>
               </select>
             </div>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? "Сохраняем…" : "Сохранить"}
+              {saving ? t("incidents.detail.saving") : t("incidents.detail.save")}
             </button>
           </div>
         </div>

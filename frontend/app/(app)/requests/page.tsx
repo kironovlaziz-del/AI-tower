@@ -1,7 +1,9 @@
 "use client";
 
+import { Form } from "@/components/Form";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { RiskPill, StatusPill } from "@/components/Pill";
 import { createRequest, listProviders, listRequests, listUseCases } from "@/lib/api";
@@ -9,6 +11,7 @@ import type { AIRequest, Provider, UseCase } from "@/lib/types";
 
 export default function RequestsPage() {
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const [requests, setRequests] = useState<AIRequest[]>([]);
   const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -39,7 +42,7 @@ export default function RequestsPage() {
     e.preventDefault();
     setError(null);
     if (!useCaseId || !providerId) {
-      setError("Выберите сценарий использования и поставщика.");
+      setError(t("requests.must_select"));
       return;
     }
     setSubmitting(true);
@@ -58,7 +61,7 @@ export default function RequestsPage() {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
           ?.detail;
-      setError(detail || "Не удалось создать запрос.");
+      setError(detail || t("requests.failed"));
     } finally {
       setSubmitting(false);
     }
@@ -69,60 +72,57 @@ export default function RequestsPage() {
   return (
     <>
       <PageHeader
-        title="Usage Registry"
+        title={t("requests.title")}
         actions={
           <button
             className="btn btn-primary btn-sm"
             onClick={() => setShowForm((s) => !s)}
             disabled={!canCreate}
-            title={canCreate ? undefined : "Сначала создайте сценарий и поставщика"}
           >
-            {showForm ? "Отмена" : "Новый запрос"}
+            {showForm ? t("requests.cancel") : t("requests.new")}
           </button>
         }
       />
       <div className="content">
         {!canCreate && (
           <p className="hint-text" style={{ marginBottom: 16 }}>
-            Чтобы регистрировать запросы, сначала создайте хотя бы один{" "}
-            <a href="/use-cases">сценарий использования</a> и одного{" "}
-            <a href="/providers">поставщика</a>.
+            {t("requests.hint_no_prereqs")}
           </p>
         )}
 
         {showForm && (
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-header">
-              <h2>Новый запрос к AI</h2>
+              <h2>{t("requests.form_title")}</h2>
             </div>
             <div className="panel-body">
-              <form onSubmit={handleCreate}>
+              <Form onSubmit={handleCreate}>
                 <div className="form-row">
                   <div className="field">
-                    <label htmlFor="use_case">Сценарий использования</label>
+                    <label htmlFor="use_case">{t("requests.use_case")}</label>
                     <select
                       id="use_case"
                       value={useCaseId}
                       onChange={(e) => setUseCaseId(Number(e.target.value))}
                       required
                     >
-                      <option value="">Выберите…</option>
+                      <option value="">{t("requests.use_case_placeholder")}</option>
                       {useCases.map((uc) => (
                         <option key={uc.id} value={uc.id}>
-                          {uc.name} ({uc.risk_level})
+                          {uc.name} ({t(`risk.${uc.risk_level}`, uc.risk_level)})
                         </option>
                       ))}
                     </select>
                   </div>
                   <div className="field">
-                    <label htmlFor="provider">Поставщик</label>
+                    <label htmlFor="provider">{t("requests.provider")}</label>
                     <select
                       id="provider"
                       value={providerId}
                       onChange={(e) => setProviderId(Number(e.target.value))}
                       required
                     >
-                      <option value="">Выберите…</option>
+                      <option value="">{t("requests.provider_placeholder")}</option>
                       {providers.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name} ({p.type})
@@ -132,57 +132,57 @@ export default function RequestsPage() {
                   </div>
                 </div>
                 <div className="field">
-                  <label htmlFor="purpose">Назначение</label>
+                  <label htmlFor="purpose">{t("requests.purpose")}</label>
                   <input
                     id="purpose"
                     required
                     value={purpose}
                     onChange={(e) => setPurpose(e.target.value)}
-                    placeholder="Например: суммаризация обращения клиента"
+                    placeholder={t("requests.purpose_placeholder")}
                   />
                 </div>
                 <div className="field">
-                  <label htmlFor="input_text">Текст запроса (промпт)</label>
+                  <label htmlFor="input_text">{t("requests.input_text")}</label>
                   <textarea
                     id="input_text"
                     required
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    placeholder="Промпт, который будет отправлен провайдеру"
+                    placeholder={t("requests.input_text_placeholder")}
                   />
                 </div>
                 {error && <p className="error-text">{error}</p>}
                 <button className="btn btn-primary" type="submit" disabled={submitting}>
-                  {submitting ? "Отправляем…" : "Отправить запрос"}
+                  {submitting ? t("requests.submitting") : t("requests.submit")}
                 </button>
-              </form>
+              </Form>
             </div>
           </div>
         )}
 
         <div className="panel">
           <div className="panel-header">
-            <h2>Все запросы</h2>
+            <h2>{t("requests.title")}</h2>
           </div>
           <table>
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Назначение</th>
-                <th>Риск</th>
-                <th>Статус</th>
-                <th>Создан</th>
+                <th>{t("requests.col_id")}</th>
+                <th>{t("requests.col_purpose")}</th>
+                <th>{t("requests.col_risk")}</th>
+                <th>{t("requests.col_status")}</th>
+                <th>{t("requests.col_created")}</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr className="empty-row">
-                  <td colSpan={5}>Загрузка…</td>
+                  <td colSpan={5}>{t("common.loading")}</td>
                 </tr>
               )}
               {!loading && requests.length === 0 && (
                 <tr className="empty-row">
-                  <td colSpan={5}>Запросов пока нет</td>
+                  <td colSpan={5}>{t("requests.empty")}</td>
                 </tr>
               )}
               {requests.map((r) => (
@@ -200,7 +200,7 @@ export default function RequestsPage() {
                     <StatusPill status={r.status} />
                   </td>
                   <td className="mono">
-                    {new Date(r.created_at).toLocaleString("ru-RU")}
+                    {new Date(r.created_at).toLocaleString(i18n.language)}
                   </td>
                 </tr>
               ))}

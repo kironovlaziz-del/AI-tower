@@ -1,12 +1,15 @@
 "use client";
 
+import { Form } from "@/components/Form";
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusPill } from "@/components/Pill";
 import { createProvider, listProviders, updateProvider } from "@/lib/api";
 import type { Provider } from "@/lib/types";
 
 export default function ProvidersPage() {
+  const { t } = useTranslation();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -36,7 +39,7 @@ export default function ProvidersPage() {
       setShowForm(false);
       refresh();
     } catch {
-      setError("Не удалось добавить поставщика.");
+      setError(t("providers.failed"));
     } finally {
       setSubmitting(false);
     }
@@ -51,10 +54,10 @@ export default function ProvidersPage() {
   return (
     <>
       <PageHeader
-        title="Vendor Risk Desk"
+        title={t("providers.title")}
         actions={
           <button className="btn btn-primary btn-sm" onClick={() => setShowForm((s) => !s)}>
-            {showForm ? "Отмена" : "Добавить поставщика"}
+            {showForm ? t("providers.cancel") : t("providers.new")}
           </button>
         }
       />
@@ -62,77 +65,75 @@ export default function ProvidersPage() {
         {showForm && (
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-header">
-              <h2>Новый поставщик AI</h2>
+              <h2>{t("providers.form_title")}</h2>
             </div>
             <div className="panel-body">
-              <form onSubmit={handleCreate}>
+              <Form onSubmit={handleCreate}>
                 <div className="form-row">
                   <div className="field">
-                    <label htmlFor="name">Название</label>
+                    <label htmlFor="name">{t("providers.name")}</label>
                     <input
                       id="name"
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="OpenAI, Anthropic, Azure OpenAI…"
+                      placeholder={t("providers.name_placeholder")}
                     />
                   </div>
                   <div className="field">
-                    <label htmlFor="type">Тип</label>
+                    <label htmlFor="type">{t("providers.type")}</label>
                     <input
                       id="type"
                       required
                       value={type}
                       onChange={(e) => setType(e.target.value)}
-                      placeholder="openai / anthropic / custom"
+                      placeholder={t("providers.type_placeholder")}
                     />
                   </div>
                 </div>
                 <div className="field">
-                  <label htmlFor="sla">SLA</label>
+                  <label htmlFor="sla">{t("providers.sla")}</label>
                   <input
                     id="sla"
                     value={sla}
                     onChange={(e) => setSla(e.target.value)}
-                    placeholder="Например: 99.9% uptime, 24ч поддержка"
+                    placeholder={t("providers.sla_placeholder")}
                   />
                 </div>
                 {error && <p className="error-text">{error}</p>}
                 <button className="btn btn-primary" type="submit" disabled={submitting}>
-                  {submitting ? "Добавляем…" : "Добавить поставщика"}
+                  {submitting ? t("providers.submitting") : t("providers.submit")}
                 </button>
-              </form>
+              </Form>
             </div>
           </div>
         )}
 
         <div className="panel">
           <div className="panel-header">
-            <h2>Поставщики</h2>
+            <h2>{t("providers.title")}</h2>
           </div>
           <table>
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Название</th>
-                <th>Тип</th>
-                <th>SLA</th>
-                <th>Риск-скор</th>
-                <th>Статус</th>
+                <th>{t("providers.col_id")}</th>
+                <th>{t("providers.col_name")}</th>
+                <th>{t("providers.col_type")}</th>
+                <th>{t("providers.col_sla")}</th>
+                <th>{t("providers.col_risk")}</th>
+                <th>{t("providers.col_status")}</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr className="empty-row">
-                  <td colSpan={7}>Загрузка…</td>
+                  <td colSpan={7}>{t("common.loading")}</td>
                 </tr>
               )}
               {!loading && providers.length === 0 && (
                 <tr className="empty-row">
-                  <td colSpan={7}>
-                    Поставщиков пока нет — добавьте, чтобы можно было создавать запросы
-                  </td>
+                  <td colSpan={7}>{t("providers.empty")}</td>
                 </tr>
               )}
               {providers.map((p) => (
@@ -147,7 +148,9 @@ export default function ProvidersPage() {
                   </td>
                   <td>
                     <button className="btn btn-sm" onClick={() => toggleStatus(p)}>
-                      {p.status === "active" ? "Приостановить" : "Активировать"}
+                      {p.status === "active"
+                        ? t("providers.suspend")
+                        : t("providers.activate")}
                     </button>
                   </td>
                 </tr>

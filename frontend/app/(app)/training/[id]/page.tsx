@@ -1,16 +1,25 @@
 "use client";
 
+import { Form } from "@/components/Form";
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusPill } from "@/components/Pill";
-import { getTrainingJob, predictWithTrainingJob, cancelTrainingJob, retryTrainingJob, downloadTrainingJobModel } from "@/lib/api";
+import {
+  getTrainingJob,
+  predictWithTrainingJob,
+  cancelTrainingJob,
+  retryTrainingJob,
+  downloadTrainingJobModel,
+} from "@/lib/api";
 import type { TrainingJob } from "@/lib/types";
 
 export default function TrainingJobDetailPage() {
   const params = useParams<{ id: string }>();
   const jobId = Number(params.id);
+  const { t, i18n } = useTranslation();
 
   const [job, setJob] = useState<TrainingJob | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,11 +39,14 @@ export default function TrainingJobDetailPage() {
     setDownloadError(null);
     setDownloading(true);
     try {
-      const ext = job.task_type === "transformer_text_classification" ||
-        job.task_type === "transformer_text_generation" ? "zip" : "joblib";
+      const ext =
+        job.task_type === "transformer_text_classification" ||
+        job.task_type === "transformer_text_generation"
+          ? "zip"
+          : "joblib";
       await downloadTrainingJobModel(jobId, `${job.name}.${ext}`);
     } catch {
-      setDownloadError("Не удалось скачать модель.");
+      setDownloadError(t("training.detail.download_failed"));
     } finally {
       setDownloading(false);
     }
@@ -47,7 +59,7 @@ export default function TrainingJobDetailPage() {
       const updated = await cancelTrainingJob(jobId);
       setJob(updated);
     } catch {
-      setLifecycleError("Не удалось остановить обучение.");
+      setLifecycleError(t("training.detail.cancel_failed"));
     } finally {
       setLifecycleBusy(false);
     }
@@ -60,7 +72,7 @@ export default function TrainingJobDetailPage() {
       const updated = await retryTrainingJob(jobId);
       setJob(updated);
     } catch {
-      setLifecycleError("Не удалось перезапустить обучение.");
+      setLifecycleError(t("training.detail.retry_failed"));
     } finally {
       setLifecycleBusy(false);
     }
@@ -112,7 +124,7 @@ export default function TrainingJobDetailPage() {
       const result = await predictWithTrainingJob(jobId, features);
       setPrediction(result.prediction);
     } catch {
-      setPredictError("Не удалось получить предсказание.");
+      setPredictError(t("training.detail.predict_failed"));
     } finally {
       setPredicting(false);
     }
@@ -121,9 +133,9 @@ export default function TrainingJobDetailPage() {
   if (loading || !job) {
     return (
       <>
-        <PageHeader title="Задание обучения" />
+        <PageHeader title={t("training.title")} />
         <div className="content">
-          <p className="loading-line">Загрузка…</p>
+          <p className="loading-line">{t("training.detail.loading")}</p>
         </div>
       </>
     );
@@ -134,37 +146,44 @@ export default function TrainingJobDetailPage() {
       <PageHeader title={job.name} />
       <div className="content">
         <div className="breadcrumb">
-          <Link href="/training">Training Service</Link> / #{job.id}
+          <Link href="/training">{t("training.detail.breadcrumb")}</Link> / #{job.id}
         </div>
 
         <div className="panel" style={{ marginBottom: 20 }}>
           <div className="panel-body">
             <dl className="kv-grid">
-              <dt>Статус</dt>
+              <dt>{t("training.detail.status")}</dt>
               <dd>
                 <StatusPill status={job.status} />
               </dd>
-              <dt>{isTransformer ? "Базовая модель" : "Алгоритм"}</dt>
+              <dt>{isTransformer ? t("training.detail.base_model") : t("training.detail.algorithm")}</dt>
               <dd className="mono">{job.base_model || job.algorithm}</dd>
-              <dt>Тип задачи</dt>
+              <dt>{t("training.detail.task_type")}</dt>
               <dd className="mono">{job.task_type}</dd>
               {!isGeneration && (
                 <>
-                  <dt>{isClassification ? "Колонка с меткой" : "Целевая колонка"}</dt>
+                  <dt>
+                    {isClassification
+                      ? t("training.detail.label_column")
+                      : t("training.detail.target_column")}
+                  </dt>
                   <dd className="mono">{job.target_column}</dd>
                 </>
               )}
-              <dt>Признаки</dt>
+              <dt>{t("training.detail.features")}</dt>
               <dd className="mono">
-                {job.feature_columns_json?.join(", ") || "определяются во время обучения"}
+                {job.feature_columns_json?.join(", ") ||
+                  t("training.detail.determined_during_training")}
               </dd>
-              <dt>Создано</dt>
+              <dt>{t("training.detail.created")}</dt>
               <dd className="mono">
-                {new Date(job.created_at).toLocaleString("ru-RU")}
+                {new Date(job.created_at).toLocaleString(i18n.language)}
               </dd>
-              <dt>Завершено</dt>
+              <dt>{t("training.detail.finished")}</dt>
               <dd className="mono">
-                {job.finished_at ? new Date(job.finished_at).toLocaleString("ru-RU") : "—"}
+                {job.finished_at
+                  ? new Date(job.finished_at).toLocaleString(i18n.language)
+                  : "—"}
               </dd>
             </dl>
           </div>
@@ -174,14 +193,15 @@ export default function TrainingJobDetailPage() {
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-body">
               <p className="hint-text" style={{ marginBottom: 12 }}>
-                Задание выполняется в фоне — страница обновится автоматически по
-                готовности.{" "}
-                {isTransformer &&
-                  "Fine-tuning без GPU может занять от нескольких минут до нескольких часов."}
+                {t("training.detail.running_hint")}
               </p>
               {lifecycleError && <p className="error-text">{lifecycleError}</p>}
-              <button className="btn btn-danger btn-sm" onClick={handleCancel} disabled={lifecycleBusy}>
-                {lifecycleBusy ? "Останавливаем…" : "Остановить обучение"}
+              <button
+                className="btn btn-danger btn-sm"
+                onClick={handleCancel}
+                disabled={lifecycleBusy}
+              >
+                {lifecycleBusy ? t("training.detail.cancelling") : t("training.detail.cancel")}
               </button>
             </div>
           </div>
@@ -191,11 +211,15 @@ export default function TrainingJobDetailPage() {
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-body">
               {lifecycleError && <p className="error-text">{lifecycleError}</p>}
-              <button className="btn btn-primary btn-sm" onClick={handleRetry} disabled={lifecycleBusy}>
-                {lifecycleBusy ? "Запускаем…" : "Запустить заново"}
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleRetry}
+                disabled={lifecycleBusy}
+              >
+                {lifecycleBusy ? t("training.detail.retrying") : t("training.detail.retry")}
               </button>
               <span className="hint-text" style={{ marginLeft: 12 }}>
-                Перезапустит с теми же параметрами.
+                {t("training.detail.retry_hint")}
               </span>
             </div>
           </div>
@@ -204,10 +228,12 @@ export default function TrainingJobDetailPage() {
         {job.status === "failed" && (
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-header">
-              <h2>Ошибка</h2>
+              <h2>{t("training.detail.error_title")}</h2>
             </div>
             <div className="panel-body">
-              <div className="text-block">{job.error_message || "Неизвестная ошибка"}</div>
+              <div className="text-block">
+                {job.error_message || t("training.detail.unknown_error")}
+              </div>
             </div>
           </div>
         )}
@@ -215,7 +241,7 @@ export default function TrainingJobDetailPage() {
         {job.status === "completed" && job.metrics_json && (
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-header">
-              <h2>Метрики качества</h2>
+              <h2>{t("training.detail.metrics_title")}</h2>
             </div>
             <div className="panel-body">
               <dl className="kv-grid">
@@ -230,9 +256,7 @@ export default function TrainingJobDetailPage() {
               </dl>
               {isGeneration && (
                 <p className="hint-text" style={{ marginTop: 8 }}>
-                  Perplexity — чем ниже, тем увереннее модель предсказывает
-                  следующий токен на отложенных данных. Прямого «процента
-                  точности» для генерации текста не существует.
+                  {t("training.detail.metrics_generation_hint")}
                 </p>
               )}
             </div>
@@ -242,17 +266,19 @@ export default function TrainingJobDetailPage() {
         {job.status === "completed" && job.model_path && (
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-header">
-              <h2>Артефакт модели</h2>
+              <h2>{t("training.detail.artifact_title")}</h2>
             </div>
             <div className="panel-body">
               <p className="hint-text" style={{ marginBottom: 12 }}>
                 {isTransformer
-                  ? "Скачается ZIP-архив с весами модели, токенизатором и конфигом — всё, что нужно, чтобы загрузить модель через transformers в другом окружении."
-                  : "Скачается .joblib-файл, включающий саму модель, список признаков и (если применимо) кодировщик меток — этого достаточно для загрузки через joblib.load() в другом окружении."}
+                  ? t("training.detail.artifact_hint_transformer")
+                  : t("training.detail.artifact_hint_sklearn")}
               </p>
               {downloadError && <p className="error-text">{downloadError}</p>}
               <button className="btn btn-sm" onClick={handleDownload} disabled={downloading}>
-                {downloading ? "Готовим архив…" : "Скачать модель"}
+                {downloading
+                  ? t("training.detail.downloading")
+                  : t("training.detail.download")}
               </button>
             </div>
           </div>
@@ -261,24 +287,30 @@ export default function TrainingJobDetailPage() {
         {job.status === "completed" && (
           <div className="panel">
             <div className="panel-header">
-              <h2>{isGeneration ? "Сгенерировать текст" : "Проверить предсказание"}</h2>
+              <h2>
+                {isGeneration
+                  ? t("training.detail.predict_title_generation")
+                  : t("training.detail.predict_title_classification")}
+              </h2>
             </div>
             <div className="panel-body">
-              <form onSubmit={handlePredict}>
+              <Form onSubmit={handlePredict}>
                 {isGeneration && (
                   <>
                     <div className="field">
-                      <label htmlFor="predict-text">Начало текста (промпт)</label>
+                      <label htmlFor="predict-text">{t("training.detail.predict_prompt")}</label>
                       <textarea
                         id="predict-text"
                         required
                         value={predictText}
                         onChange={(e) => setPredictText(e.target.value)}
-                        placeholder="Введите начало текста, модель продолжит"
+                        placeholder={t("training.detail.predict_prompt_placeholder")}
                       />
                     </div>
                     <div className="field" style={{ maxWidth: 220 }}>
-                      <label htmlFor="max_new_tokens">Сколько токенов сгенерировать</label>
+                      <label htmlFor="max_new_tokens">
+                        {t("training.detail.predict_max_tokens")}
+                      </label>
                       <input
                         id="max_new_tokens"
                         type="number"
@@ -292,13 +324,13 @@ export default function TrainingJobDetailPage() {
                 )}
                 {isClassification && (
                   <div className="field">
-                    <label htmlFor="predict-text">Текст</label>
+                    <label htmlFor="predict-text">{t("training.detail.predict_text")}</label>
                     <textarea
                       id="predict-text"
                       required
                       value={predictText}
                       onChange={(e) => setPredictText(e.target.value)}
-                      placeholder="Введите текст для классификации"
+                      placeholder={t("training.detail.predict_text_placeholder")}
                     />
                   </div>
                 )}
@@ -323,10 +355,10 @@ export default function TrainingJobDetailPage() {
                 {predictError && <p className="error-text">{predictError}</p>}
                 <button className="btn btn-primary" type="submit" disabled={predicting}>
                   {predicting
-                    ? "Считаем…"
+                    ? t("training.detail.predicting")
                     : isGeneration
-                    ? "Сгенерировать"
-                    : "Получить предсказание"}
+                    ? t("training.detail.predict_submit_generation")
+                    : t("training.detail.predict_submit_classification")}
                 </button>
                 {prediction !== undefined && (
                   <div className="text-block" style={{ marginTop: 12 }}>
@@ -334,12 +366,12 @@ export default function TrainingJobDetailPage() {
                       String(prediction)
                     ) : (
                       <>
-                        Результат: <strong>{String(prediction)}</strong>
+                        {t("training.detail.result")} <strong>{String(prediction)}</strong>
                       </>
                     )}
                   </div>
                 )}
-              </form>
+              </Form>
             </div>
           </div>
         )}

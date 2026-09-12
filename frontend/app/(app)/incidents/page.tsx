@@ -1,7 +1,9 @@
 "use client";
 
+import { Form } from "@/components/Form";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { RiskPill, StatusPill } from "@/components/Pill";
 import { createIncident, listIncidents } from "@/lib/api";
@@ -9,6 +11,7 @@ import type { Incident, RiskLevel } from "@/lib/types";
 
 export default function IncidentsPage() {
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -41,7 +44,7 @@ export default function IncidentsPage() {
       setShowForm(false);
       refresh();
     } catch {
-      setError("Не удалось создать инцидент.");
+      setError(t("incidents.failed"));
     } finally {
       setSubmitting(false);
     }
@@ -50,10 +53,10 @@ export default function IncidentsPage() {
   return (
     <>
       <PageHeader
-        title="Incident Tracker"
+        title={t("incidents.title")}
         actions={
           <button className="btn btn-primary btn-sm" onClick={() => setShowForm((s) => !s)}>
-            {showForm ? "Отмена" : "Новый инцидент"}
+            {showForm ? t("incidents.cancel") : t("incidents.new")}
           </button>
         }
       />
@@ -61,87 +64,87 @@ export default function IncidentsPage() {
         {showForm && (
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-header">
-              <h2>Зарегистрировать инцидент</h2>
+              <h2>{t("incidents.form_title")}</h2>
             </div>
             <div className="panel-body">
-              <form onSubmit={handleCreate}>
+              <Form onSubmit={handleCreate}>
                 <div className="form-row">
                   <div className="field">
-                    <label htmlFor="severity">Серьёзность</label>
+                    <label htmlFor="severity">{t("incidents.severity")}</label>
                     <select
                       id="severity"
                       value={severity}
                       onChange={(e) => setSeverity(e.target.value as RiskLevel)}
                     >
-                      <option value="low">low</option>
-                      <option value="medium">medium</option>
-                      <option value="high">high</option>
-                      <option value="critical">critical</option>
+                      <option value="low">{t("risk.low")}</option>
+                      <option value="medium">{t("risk.medium")}</option>
+                      <option value="high">{t("risk.high")}</option>
+                      <option value="critical">{t("risk.critical")}</option>
                     </select>
                   </div>
                   <div className="field">
-                    <label htmlFor="category">Категория</label>
+                    <label htmlFor="category">{t("incidents.category")}</label>
                     <input
                       id="category"
                       required
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      placeholder="Например: утечка данных, галлюцинация, сбой провайдера"
+                      placeholder={t("incidents.category_placeholder")}
                     />
                   </div>
                 </div>
                 <div className="field">
-                  <label htmlFor="summary">Краткое описание</label>
+                  <label htmlFor="summary">{t("incidents.summary")}</label>
                   <input
                     id="summary"
                     required
                     value={summary}
                     onChange={(e) => setSummary(e.target.value)}
-                    placeholder="Что произошло"
+                    placeholder={t("incidents.summary_placeholder")}
                   />
                 </div>
                 <div className="field">
-                  <label htmlFor="impact">Влияние</label>
+                  <label htmlFor="impact">{t("incidents.impact")}</label>
                   <textarea
                     id="impact"
                     value={impact}
                     onChange={(e) => setImpact(e.target.value)}
-                    placeholder="Кого и что затронуло"
+                    placeholder={t("incidents.impact_placeholder")}
                   />
                 </div>
                 {error && <p className="error-text">{error}</p>}
                 <button className="btn btn-primary" type="submit" disabled={submitting}>
-                  {submitting ? "Создаём…" : "Зарегистрировать"}
+                  {submitting ? t("incidents.submitting") : t("incidents.submit")}
                 </button>
-              </form>
+              </Form>
             </div>
           </div>
         )}
 
         <div className="panel">
           <div className="panel-header">
-            <h2>Все инциденты</h2>
+            <h2>{t("incidents.table_title")}</h2>
           </div>
           <table>
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Категория</th>
-                <th>Описание</th>
-                <th>Серьёзность</th>
-                <th>Статус</th>
-                <th>Создан</th>
+                <th>{t("incidents.col_id")}</th>
+                <th>{t("incidents.col_category")}</th>
+                <th>{t("incidents.col_summary")}</th>
+                <th>{t("incidents.col_severity")}</th>
+                <th>{t("incidents.col_status")}</th>
+                <th>{t("incidents.col_created")}</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr className="empty-row">
-                  <td colSpan={6}>Загрузка…</td>
+                  <td colSpan={6}>{t("common.loading")}</td>
                 </tr>
               )}
               {!loading && incidents.length === 0 && (
                 <tr className="empty-row">
-                  <td colSpan={6}>Инцидентов пока нет</td>
+                  <td colSpan={6}>{t("incidents.empty")}</td>
                 </tr>
               )}
               {incidents.map((i) => (
@@ -160,7 +163,7 @@ export default function IncidentsPage() {
                     <StatusPill status={i.status} />
                   </td>
                   <td className="mono">
-                    {new Date(i.created_at).toLocaleString("ru-RU")}
+                    {new Date(i.created_at).toLocaleString(i18n.language)}
                   </td>
                 </tr>
               ))}

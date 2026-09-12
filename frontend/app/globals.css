@@ -616,3 +616,154 @@ tbody tr.clickable:hover {
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 12px;
 }
+
+.lang-switcher {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  border: 1px solid #2c3040;
+  background: var(--bg-sidebar-hover);
+  color: var(--text-inverse);
+  font-size: 12px;
+  font-family: var(--font-geist-mono), monospace;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%238a8fa3' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
+}
+
+.lang-switcher:hover {
+  border-color: #3a3f52;
+  color: #cfd9ff;
+}
+
+.lang-switcher:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.lang-switcher option {
+  background: var(--bg-sidebar);
+  color: var(--text-inverse);
+}
+
+/* ---------- file input (custom, i18n-friendly) ---------- */
+
+.file-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  background: var(--bg-panel);
+}
+
+.file-input-row .btn {
+  flex-shrink: 0;
+}
+
+.file-name {
+  font-size: 13px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.file-name.has-file {
+  color: var(--text-primary);
+  font-family: var(--font-geist-mono), monospace;
+}
+
+/* ---------- inline form validation ---------- */
+
+.field input.invalid,
+.field select.invalid,
+.field textarea.invalid,
+.file-input-row.invalid {
+  border-color: var(--risk-critical);
+  outline: 1px solid var(--risk-critical);
+  outline-offset: -1px;
+}
+
+.field-error {
+  color: var(--risk-critical);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+/* ---------- language switcher: light variant (login/register) ---------- */
+
+.lang-switcher-light {
+  width: 100%;
+  padding: 8px 26px 8px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23676b76' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  margin-bottom: 16px;
+}
+
+.lang-switcher-light:hover {
+  border-color: var(--text-muted);
+}
+
+.lang-switcher-light:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: var(--accent);
+}
+
+/* Also fix the sidebar variant selector so both variants share layout */
+.lang-switcher-sidebar {
+  /* styles already defined earlier as .lang-switcher */
+}
+
+/* Hard override for the light variant when both classes are present */
+.lang-switcher.lang-switcher-light {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  font-family: inherit;
+}
+
+.lang-switcher.lang-switcher-light:hover {
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.lang-switcher.lang-switcher-light:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* Fix options inside the light switcher: white bg, dark text,
+   independent from the sidebar variant. */
+.lang-switcher.lang-switcher-light option {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+/* Selected option — accent color, still readable */
+.lang-switcher.lang-switcher-light option:checked {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+/* Optional small label above the switcher */
+.lang-switcher-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}

@@ -1,11 +1,15 @@
 "use client";
 
+import { Form } from "@/components/Form";
 import React, { useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +25,7 @@ export default function LoginPage() {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
           ?.detail;
-      setError(detail || "Не удалось войти. Проверьте email и пароль.");
+      setError(detail || t("auth.login_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -30,11 +34,12 @@ export default function LoginPage() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <div className="auth-brand">AI CONTROL TOWER</div>
-        <h1 className="auth-title">Вход в систему</h1>
-        <form onSubmit={handleSubmit}>
+        <div className="auth-brand">{t("auth.brand")}</div>
+        <LanguageSwitcher variant="light" />
+        <h1 className="auth-title">{t("auth.login_title")}</h1>
+        <Form onSubmit={handleSubmit}>
           <div className="field">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">{t("auth.email")}</label>
             <input
               id="email"
               type="email"
@@ -46,7 +51,7 @@ export default function LoginPage() {
             />
           </div>
           <div className="field">
-            <label htmlFor="password">Пароль</label>
+            <label htmlFor="password">{t("auth.password")}</label>
             <input
               id="password"
               type="password"
@@ -63,11 +68,11 @@ export default function LoginPage() {
             style={{ width: "100%", justifyContent: "center", marginTop: 4 }}
             disabled={submitting}
           >
-            {submitting ? "Входим…" : "Войти"}
+            {submitting ? t("auth.login_button_loading") : t("auth.login_button")}
           </button>
-        </form>
+        </Form>
         <p className="auth-switch">
-          Нет аккаунта? <Link href="/register">Зарегистрировать организацию</Link>
+          {t("auth.no_account")} <Link href="/register">{t("auth.register_link")}</Link>
         </p>
       </div>
     </div>

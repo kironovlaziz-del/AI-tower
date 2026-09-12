@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { listAuditLogs } from "@/lib/api";
 import type { AuditLog } from "@/lib/types";
@@ -33,6 +34,7 @@ function ActionPill({ action }: { action: string }) {
 }
 
 export default function AuditLogsPage() {
+  const { t, i18n } = useTranslation();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [entityType, setEntityType] = useState("");
@@ -48,11 +50,11 @@ export default function AuditLogsPage() {
 
   return (
     <>
-      <PageHeader title="Audit & Reporting" />
+      <PageHeader title={t("audit.title")} />
       <div className="content">
         <div className="panel">
           <div className="panel-header">
-            <h2>Журнал действий</h2>
+            <h2>{t("audit.table_title")}</h2>
             <select
               value={entityType}
               onChange={(e) => setEntityType(e.target.value)}
@@ -62,10 +64,10 @@ export default function AuditLogsPage() {
                 padding: "5px 8px",
               }}
             >
-              <option value="">Все типы объектов</option>
-              {ENTITY_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              <option value="">{t("audit.filter_all")}</option>
+              {ENTITY_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
                 </option>
               ))}
             </select>
@@ -73,29 +75,29 @@ export default function AuditLogsPage() {
           <table>
             <thead>
               <tr>
-                <th>Время</th>
-                <th>Объект</th>
-                <th>ID</th>
-                <th>Действие</th>
-                <th>Пользователь</th>
-                <th>Детали</th>
+                <th>{t("audit.col_time")}</th>
+                <th>{t("audit.col_entity")}</th>
+                <th>{t("audit.col_id")}</th>
+                <th>{t("audit.col_action")}</th>
+                <th>{t("audit.col_user")}</th>
+                <th>{t("audit.col_details")}</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr className="empty-row">
-                  <td colSpan={6}>Загрузка…</td>
+                  <td colSpan={6}>{t("audit.loading")}</td>
                 </tr>
               )}
               {!loading && logs.length === 0 && (
                 <tr className="empty-row">
-                  <td colSpan={6}>Записей пока нет</td>
+                  <td colSpan={6}>{t("audit.empty")}</td>
                 </tr>
               )}
               {logs.map((log) => (
                 <tr key={log.id}>
                   <td className="mono">
-                    {new Date(log.created_at).toLocaleString("ru-RU")}
+                    {new Date(log.created_at).toLocaleString(i18n.language)}
                   </td>
                   <td className="mono">{log.entity_type}</td>
                   <td className="mono">{log.entity_id ?? "—"}</td>
@@ -103,7 +105,9 @@ export default function AuditLogsPage() {
                     <ActionPill action={log.action} />
                   </td>
                   <td className="mono">
-                    {log.actor_user_id != null ? `#${log.actor_user_id}` : "system"}
+                    {log.actor_user_id != null
+                      ? `#${log.actor_user_id}`
+                      : t("audit.system_user")}
                   </td>
                   <td className="mono" style={{ maxWidth: 360, overflowWrap: "anywhere" }}>
                     {log.metadata_json ? JSON.stringify(log.metadata_json) : "—"}

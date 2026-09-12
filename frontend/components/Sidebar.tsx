@@ -2,57 +2,60 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 const NAV = [
   {
-    section: "Обзор",
-    items: [{ href: "/dashboard", label: "Панель управления" }],
+    sectionKey: "sidebar.sections.overview",
+    items: [{ href: "/dashboard", labelKey: "sidebar.nav.dashboard" }],
   },
   {
-    section: "Подключения",
-    items: [{ href: "/connections", label: "Connections" }],
+    sectionKey: "sidebar.sections.connections",
+    items: [{ href: "/connections", labelKey: "sidebar.nav.connections" }],
   },
   {
-    section: "Управление",
+    sectionKey: "sidebar.sections.management",
     items: [
-      { href: "/policies", label: "Policy Center" },
-      { href: "/use-cases", label: "Сценарии использования" },
-      { href: "/providers", label: "Vendor Risk Desk" },
+      { href: "/policies", labelKey: "sidebar.nav.policies" },
+      { href: "/use-cases", labelKey: "sidebar.nav.use_cases" },
+      { href: "/providers", labelKey: "sidebar.nav.providers" },
     ],
   },
   {
-    section: "Операции",
+    sectionKey: "sidebar.sections.operations",
     items: [
-      { href: "/requests", label: "Usage Registry" },
-      { href: "/approvals", label: "Approval Workflow" },
+      { href: "/requests", labelKey: "sidebar.nav.requests" },
+      { href: "/approvals", labelKey: "sidebar.nav.approvals" },
     ],
   },
   {
-    section: "Мониторинг",
+    sectionKey: "sidebar.sections.monitoring",
     items: [
-      { href: "/incidents", label: "Incident Tracker" },
-      { href: "/shadow-ai", label: "Shadow AI Monitor" },
-      { href: "/audit", label: "Audit & Reporting" },
+      { href: "/incidents", labelKey: "sidebar.nav.incidents" },
+      { href: "/shadow-ai", labelKey: "sidebar.nav.shadow_ai" },
+      { href: "/audit", labelKey: "sidebar.nav.audit" },
     ],
   },
   {
-    section: "MLOps",
+    sectionKey: "sidebar.sections.mlops",
     items: [
-      { href: "/compute", label: "Compute Detector" },
-      { href: "/datasets", label: "Dataset Manager" },
-      { href: "/training", label: "Training Service" },
+      { href: "/compute", labelKey: "sidebar.nav.compute" },
+      { href: "/datasets", labelKey: "sidebar.nav.datasets" },
+      { href: "/training", labelKey: "sidebar.nav.training" },
     ],
   },
   {
-    section: "Настройки",
-    items: [{ href: "/notifications", label: "Notification Service" }],
+    sectionKey: "sidebar.sections.settings",
+    items: [{ href: "/notifications", labelKey: "sidebar.nav.notifications" }],
   },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <aside className="sidebar">
@@ -62,8 +65,8 @@ export function Sidebar() {
       </div>
       <nav className="sidebar-nav">
         {NAV.map((group) => (
-          <div key={group.section}>
-            <div className="sidebar-section">{group.section}</div>
+          <div key={group.sectionKey}>
+            <div className="sidebar-section">{t(group.sectionKey)}</div>
             {group.items.map((item) => {
               const active =
                 pathname === item.href || pathname?.startsWith(item.href + "/");
@@ -73,7 +76,7 @@ export function Sidebar() {
                   href={item.href}
                   className={`sidebar-link${active ? " active" : ""}`}
                 >
-                  {item.label}
+                  {t(item.labelKey)}
                 </Link>
               );
             })}
@@ -82,9 +85,14 @@ export function Sidebar() {
       </nav>
       <div className="sidebar-footer">
         <div className="sidebar-user">{user?.name ?? "—"}</div>
-        <div className="sidebar-org">{user?.role}</div>
+        <div className="sidebar-org">
+          {t(`sidebar.role_${user?.role ?? "user"}`)}
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <LanguageSwitcher />
+        </div>
         <button className="sidebar-logout" onClick={logout}>
-          Выйти
+          {t("sidebar.logout")}
         </button>
       </div>
     </aside>

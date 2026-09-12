@@ -1,7 +1,9 @@
 "use client";
 
+import { Form } from "@/components/Form";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { RiskPill, StatusPill } from "@/components/Pill";
 import { createUseCase, listUseCases } from "@/lib/api";
@@ -9,6 +11,7 @@ import type { RiskLevel, UseCase } from "@/lib/types";
 
 export default function UseCasesPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -37,7 +40,7 @@ export default function UseCasesPage() {
       setShowForm(false);
       refresh();
     } catch {
-      setError("Не удалось создать сценарий.");
+      setError(t("use_cases.failed"));
     } finally {
       setSubmitting(false);
     }
@@ -46,10 +49,10 @@ export default function UseCasesPage() {
   return (
     <>
       <PageHeader
-        title="Сценарии использования"
+        title={t("use_cases.title")}
         actions={
           <button className="btn btn-primary btn-sm" onClick={() => setShowForm((s) => !s)}>
-            {showForm ? "Отмена" : "Новый сценарий"}
+            {showForm ? t("use_cases.cancel") : t("use_cases.new")}
           </button>
         }
       />
@@ -57,67 +60,67 @@ export default function UseCasesPage() {
         {showForm && (
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-header">
-              <h2>Новый сценарий использования</h2>
+              <h2>{t("use_cases.form_title")}</h2>
             </div>
             <div className="panel-body">
-              <form onSubmit={handleCreate}>
+              <Form onSubmit={handleCreate}>
                 <div className="form-row">
                   <div className="field">
-                    <label htmlFor="name">Название</label>
+                    <label htmlFor="name">{t("use_cases.name")}</label>
                     <input
                       id="name"
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Например: Поддержка клиентов через GPT"
+                      placeholder={t("use_cases.name_placeholder")}
                     />
                   </div>
                   <div className="field">
-                    <label htmlFor="risk">Уровень риска</label>
+                    <label htmlFor="risk">{t("use_cases.risk")}</label>
                     <select
                       id="risk"
                       value={riskLevel}
                       onChange={(e) => setRiskLevel(e.target.value as RiskLevel)}
                     >
-                      <option value="low">low</option>
-                      <option value="medium">medium</option>
-                      <option value="high">high</option>
-                      <option value="critical">critical</option>
+                      <option value="low">{t("risk.low")}</option>
+                      <option value="medium">{t("risk.medium")}</option>
+                      <option value="high">{t("risk.high")}</option>
+                      <option value="critical">{t("risk.critical")}</option>
                     </select>
                   </div>
                 </div>
                 {error && <p className="error-text">{error}</p>}
                 <button className="btn btn-primary" type="submit" disabled={submitting}>
-                  {submitting ? "Создаём…" : "Создать сценарий"}
+                  {submitting ? t("use_cases.submitting") : t("use_cases.submit")}
                 </button>
-              </form>
+              </Form>
             </div>
           </div>
         )}
 
         <div className="panel">
           <div className="panel-header">
-            <h2>Все сценарии</h2>
+            <h2>{t("use_cases.title")}</h2>
           </div>
           <table>
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Название</th>
-                <th>Риск</th>
-                <th>Статус</th>
-                <th>Политика</th>
+                <th>{t("use_cases.col_id")}</th>
+                <th>{t("use_cases.col_name")}</th>
+                <th>{t("use_cases.col_risk")}</th>
+                <th>{t("use_cases.col_status")}</th>
+                <th>{t("use_cases.col_policy")}</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr className="empty-row">
-                  <td colSpan={5}>Загрузка…</td>
+                  <td colSpan={5}>{t("common.loading")}</td>
                 </tr>
               )}
               {!loading && useCases.length === 0 && (
                 <tr className="empty-row">
-                  <td colSpan={5}>Сценариев пока нет</td>
+                  <td colSpan={5}>{t("use_cases.empty")}</td>
                 </tr>
               )}
               {useCases.map((uc) => (
@@ -136,8 +139,8 @@ export default function UseCasesPage() {
                   </td>
                   <td className="mono">
                     {uc.approved_policy_version_id
-                      ? `version #${uc.approved_policy_version_id}`
-                      : "не привязана"}
+                      ? `${t("use_cases.policy_version")} #${uc.approved_policy_version_id}`
+                      : t("use_cases.policy_not_linked")}
                   </td>
                 </tr>
               ))}
