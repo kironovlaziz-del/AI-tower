@@ -6,7 +6,8 @@ from app.schemas.policy import PolicyCreate, PolicyOut, PolicyVersionCreate, Pol
 from app.services.policy_service import PolicyService
 from app.services.audit_service import AuditService
 from app.models.user import User
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_role
+from app.models.user import UserRole
 
 router = APIRouter()
 
@@ -14,7 +15,7 @@ router = APIRouter()
 async def create_policy(
     policy_data: PolicyCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_role(UserRole.admin))
 ):
     service = PolicyService(db)
     policy = await service.create_policy(current_user.org_id, policy_data, current_user.id)
@@ -46,7 +47,7 @@ async def create_policy_version(
     policy_id: int,
     version_data: PolicyVersionCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_role(UserRole.admin))
 ):
     service = PolicyService(db)
     version = await service.create_policy_version(
@@ -72,7 +73,7 @@ async def approve_policy_version(
     policy_id: int,
     version_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_role(UserRole.admin, UserRole.approver))
 ):
     service = PolicyService(db)
     version = await service.approve_policy_version(

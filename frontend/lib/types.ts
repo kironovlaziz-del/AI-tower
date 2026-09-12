@@ -1,5 +1,7 @@
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 
+export type UserRole = "admin" | "approver" | "user";
+
 export interface User {
   id: number;
   org_id: number;
@@ -63,7 +65,8 @@ export interface AIRequest {
   use_case_id?: number | null;
   user_id?: number | null;
   provider_id?: number | null;
-  input_text?: string | null;
+  // Raw prompt is not exposed - the backend only returns the masked
+  // version produced by the Prompt Firewall.
   masked_input_text?: string | null;
   purpose?: string | null;
   risk_level: RiskLevel;
@@ -208,7 +211,9 @@ export interface TrainingJob {
   feature_columns_json?: string[] | null;
   status: TrainingJobStatus;
   celery_task_id?: string | null;
-  model_path?: string | null;
+  progress_pct?: number | null;
+  progress_stage?: string | null;
+  has_model_artifact?: boolean;
   metrics_json?: Record<string, number> | null;
   error_message?: string | null;
   created_by?: number | null;

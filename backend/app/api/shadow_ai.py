@@ -12,7 +12,8 @@ from app.services.shadow_ai_service import ShadowAIService
 from app.services.audit_service import AuditService
 from app.services import notification_service
 from app.models.user import User
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_role
+from app.models.user import UserRole
 
 router = APIRouter()
 
@@ -79,7 +80,7 @@ async def register_sighting(
     sighting_id: int,
     data: ShadowSightingRegister,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role(UserRole.admin)),
 ):
     service = ShadowAIService(db)
     sighting = await service.register_as_provider(sighting_id, current_user.org_id, data)

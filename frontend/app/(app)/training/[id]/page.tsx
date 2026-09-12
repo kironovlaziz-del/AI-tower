@@ -1,6 +1,5 @@
 "use client";
 
-import { Form } from "@/components/Form";
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -192,7 +191,20 @@ export default function TrainingJobDetailPage() {
         {(job.status === "queued" || job.status === "running") && (
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-body">
-              <p className="hint-text" style={{ marginBottom: 12 }}>
+              {job.progress_pct != null && (
+                <>
+                  <div className="progress-bar">
+                    <div
+                      className="progress-bar-fill"
+                      style={{ width: `${job.progress_pct}%` }}
+                    />
+                  </div>
+                  <div className="progress-stage">
+                    {job.progress_pct.toFixed(0)}% — {job.progress_stage || "…"}
+                  </div>
+                </>
+              )}
+              <p className="hint-text" style={{ marginTop: 12, marginBottom: 12 }}>
                 {t("training.detail.running_hint")}
               </p>
               {lifecycleError && <p className="error-text">{lifecycleError}</p>}
@@ -245,15 +257,28 @@ export default function TrainingJobDetailPage() {
             </div>
             <div className="panel-body">
               <dl className="kv-grid">
-                {Object.entries(job.metrics_json).map(([key, value]) => (
-                  <React.Fragment key={key}>
-                    <dt className="mono">{key}</dt>
-                    <dd className="mono">
-                      {typeof value === "number" ? value.toFixed(4) : String(value)}
-                    </dd>
-                  </React.Fragment>
-                ))}
+                {Object.entries(job.metrics_json)
+                  .filter(([key]) => key !== "warnings")
+                  .map(([key, value]) => (
+                    <React.Fragment key={key}>
+                      <dt className="mono">{key}</dt>
+                      <dd className="mono">
+                        {typeof value === "number" ? value.toFixed(4) : String(value)}
+                      </dd>
+                    </React.Fragment>
+                  ))}
               </dl>
+              {Array.isArray((job.metrics_json as Record<string, unknown>)?.warnings) && (
+                <div style={{ marginTop: 12 }}>
+                  {((job.metrics_json as Record<string, unknown>).warnings as string[]).map(
+                    (w: string, i: number) => (
+                      <p key={i} className="hint-text" style={{ marginBottom: 6 }}>
+                        ⚠ {w}
+                      </p>
+                    )
+                  )}
+                </div>
+              )}
               {isGeneration && (
                 <p className="hint-text" style={{ marginTop: 8 }}>
                   {t("training.detail.metrics_generation_hint")}
@@ -263,7 +288,7 @@ export default function TrainingJobDetailPage() {
           </div>
         )}
 
-        {job.status === "completed" && job.model_path && (
+        {job.status === "completed" && job.has_model_artifact && (
           <div className="panel" style={{ marginBottom: 20 }}>
             <div className="panel-header">
               <h2>{t("training.detail.artifact_title")}</h2>
@@ -294,7 +319,7 @@ export default function TrainingJobDetailPage() {
               </h2>
             </div>
             <div className="panel-body">
-              <Form onSubmit={handlePredict}>
+              <form onSubmit={handlePredict}>
                 {isGeneration && (
                   <>
                     <div className="field">
@@ -371,7 +396,7 @@ export default function TrainingJobDetailPage() {
                     )}
                   </div>
                 )}
-              </Form>
+              </form>
             </div>
           </div>
         )}

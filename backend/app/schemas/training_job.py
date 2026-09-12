@@ -40,9 +40,13 @@ class TrainingJobOut(BaseModel):
     feature_columns_json: Optional[List[str]]
     status: str
     celery_task_id: Optional[str]
-    model_path: Optional[str]
+    # The absolute path on disk is intentionally not exposed - the frontend
+    # only needs to know whether a downloadable artifact exists.
+    has_model_artifact: bool = False
     metrics_json: Optional[Dict[str, Any]]
     error_message: Optional[str]
+    progress_pct: Optional[float] = None
+    progress_stage: Optional[str] = None
     created_by: Optional[int]
     created_at: datetime
     started_at: Optional[datetime]

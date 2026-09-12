@@ -11,7 +11,8 @@ from app.schemas.notification_channel import (
 from app.services.notification_service import NotificationChannelService
 from app.services.audit_service import AuditService
 from app.models.user import User
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_role
+from app.models.user import UserRole
 
 router = APIRouter()
 
@@ -25,7 +26,7 @@ async def list_event_types():
 async def create_channel(
     data: NotificationChannelCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role(UserRole.admin)),
 ):
     service = NotificationChannelService(db)
     channel = await service.create_channel(current_user.org_id, current_user.id, data)
@@ -50,7 +51,7 @@ async def update_channel(
     channel_id: int,
     data: NotificationChannelUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role(UserRole.admin)),
 ):
     service = NotificationChannelService(db)
     channel = await service.update_channel(channel_id, current_user.org_id, data)
@@ -65,7 +66,7 @@ async def update_channel(
 async def delete_channel(
     channel_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role(UserRole.admin)),
 ):
     service = NotificationChannelService(db)
     await service.delete_channel(channel_id, current_user.org_id)

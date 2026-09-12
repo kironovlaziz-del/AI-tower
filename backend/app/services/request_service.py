@@ -11,59 +11,53 @@ from app.schemas.request import RequestCreate
 from app.services import prompt_firewall
 from app.services import provider_adapters
 from app.services.provider_adapters import ProviderCallError
-from app.core.crypto import decrypt_secret
+from app.core.crypto import decrypt_secret, encrypt_secret
+
 
 class RequestService:
     def __init__(self, db: AsyncSession):
         self.db = db
-    
+
     async def create_request(
         self, org_id: int, user_id: int, data: RequestCreate
     ) -> AIRequest:
-        # Get use case
         result = await self.db.execute(
             select(AIUseCase).where(
                 AIUseCase.id == data.use_case_id,
-                AIUseCase.org_id == org_id
+                AIUseCase.org_id == org_id,
             )
         )
         use_case = result.scalar_one_or_none()
         if not use_case:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Use case not found"
+                detail="Use case not found",
             )
-        
-        # Get provider
+
         result = await self.db.execute(
             select(AIProvider).where(
                 AIProvider.id == data.provider_id,
-                AIProvider.org_id == org_id
+                AIProvider.org_id == org_id,
             )
         )
         provider = result.scalar_one_or_none()
         if not provider:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Provider not found"
+                detail="Provider not found",
             )
 
-        # --- Connections gate ---
         # A disabled connection is a hard stop: no request should ever reach
         # the firewall or policy engine on a provider that's been switched
-        # off from Connections / Vendor Risk Desk.
+        # off from Connections.
         if provider.status != "active":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"The '{provider.name}' connection is currently disabled and cannot accept new requests.",
             )
-        
-        # Determine risk level from use case
+
         risk_level = use_case.risk_level
-        
-        # Load the policy version linked to this use case, if any - it drives
-        # both the Prompt Firewall's blocked-terms list and the approval
-        # requirement below.
+
         policy_version = None
         if use_case.approved_policy_version_id:
             result = await self.db.execute(
@@ -75,12 +69,16 @@ class RequestService:
 
         rules = (policy_version.rules_json if policy_version else {}) or {}
 
-        # --- Prompt Firewall ---
-        # Runs before anything else is persisted: a blocked prompt never
-        # reaches the policy engine or a provider.
+        # Prompt Firewall runs before anything is persisted: a blocked
+        # prompt never reaches the policy engine or a provider.
         firewall_result = prompt_firewall.scan(
             data.input_text, blocked_terms=rules.get("blocked_terms")
         )
+
+        # The raw prompt is only ever stored Fernet-encrypted, and never
+        # returned by the API. Anything downstream (UI, provider call,
+        # audit log metadata) uses masked_input_text instead.
+        encrypted_raw = encrypt_secret(data.input_text) if data.input_text else None
 
         if firewall_result.blocked:
             request = AIRequest(
@@ -88,7 +86,7 @@ class RequestService:
                 use_case_id=data.use_case_id,
                 user_id=user_id,
                 provider_id=data.provider_id,
-                input_text=data.input_text,
+                input_text_encrypted=encrypted_raw,
                 masked_input_text=None,
                 purpose=data.purpose,
                 risk_level=risk_level,
@@ -100,16 +98,14 @@ class RequestService:
             await self.db.refresh(request)
             return request
 
-        # --- Policy Engine ---
         requires_approval = rules.get("effect") == "require_approval"
 
-        # Create request
         request = AIRequest(
             org_id=org_id,
             use_case_id=data.use_case_id,
             user_id=user_id,
             provider_id=data.provider_id,
-            input_text=data.input_text,
+            input_text_encrypted=encrypted_raw,
             masked_input_text=firewall_result.masked_text,
             purpose=data.purpose,
             risk_level=risk_level,
@@ -119,27 +115,25 @@ class RequestService:
         self.db.add(request)
         await self.db.commit()
         await self.db.refresh(request)
-        
-        # If no approval required, process it now (real provider call, or a
-        # clearly-flagged mock if no credentials are configured yet).
+
         if not requires_approval:
             await self.process_request(request.id, org_id)
             await self.db.refresh(request)
-        
+
         return request
-    
+
     async def process_request(self, request_id: int, org_id: int) -> AIResponse:
         result = await self.db.execute(
             select(AIRequest).where(
                 AIRequest.id == request_id,
-                AIRequest.org_id == org_id
+                AIRequest.org_id == org_id,
             )
         )
         request = result.scalar_one_or_none()
         if not request:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Request not found"
+                detail="Request not found",
             )
 
         provider = None
@@ -149,8 +143,10 @@ class RequestService:
             )
             provider = provider_result.scalar_one_or_none()
 
-        # The provider only ever sees the masked text, never the raw input_text.
-        prompt = request.masked_input_text or request.input_text or ""
+        # The provider only ever sees the masked text. If masking was somehow
+        # empty (should never happen - scan() always sets a value), fall back
+        # to a safe placeholder rather than sending nothing.
+        prompt = request.masked_input_text or "[MASKED:UNAVAILABLE]"
 
         api_key: Optional[str] = None
         if provider and provider.api_key_encrypted:
@@ -194,32 +190,33 @@ class RequestService:
         self.db.add(response)
         await self.db.commit()
         await self.db.refresh(response)
-        
+
         return response
-    
+
     async def get_request(self, request_id: int, org_id: int) -> AIRequest:
         result = await self.db.execute(
             select(AIRequest).where(
                 AIRequest.id == request_id,
-                AIRequest.org_id == org_id
+                AIRequest.org_id == org_id,
             )
         )
         request = result.scalar_one_or_none()
         if not request:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Request not found"
+                detail="Request not found",
             )
         return request
-    
+
     async def list_requests(self, org_id: int):
         result = await self.db.execute(
-            select(AIRequest).where(AIRequest.org_id == org_id).order_by(AIRequest.created_at.desc())
+            select(AIRequest)
+            .where(AIRequest.org_id == org_id)
+            .order_by(AIRequest.created_at.desc())
         )
         return list(result.scalars().all())
 
     async def get_response(self, request_id: int, org_id: int) -> Optional[AIResponse]:
-        # Ensure the request belongs to this org
         await self.get_request(request_id, org_id)
         result = await self.db.execute(
             select(AIResponse).where(AIResponse.request_id == request_id)

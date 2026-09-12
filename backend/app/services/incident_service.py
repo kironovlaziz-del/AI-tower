@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException, status
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 from app.models.ai_incident import AIIncident
 from app.schemas.incident import IncidentCreate, IncidentUpdate
 
@@ -64,7 +64,7 @@ class IncidentService:
         if data.status is not None:
             incident.status = data.status
             if data.status == "resolved":
-                incident.resolved_at = datetime.utcnow()
+                incident.resolved_at = datetime.now(timezone.utc)
         
         await self.db.commit()
         await self.db.refresh(incident)

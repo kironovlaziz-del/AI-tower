@@ -7,7 +7,8 @@ from app.services.approval_service import ApprovalService
 from app.services.audit_service import AuditService
 from app.services import notification_service
 from app.models.user import User
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_role
+from app.models.user import UserRole
 
 router = APIRouter()
 
@@ -15,7 +16,7 @@ router = APIRouter()
 async def create_approval(
     data: ApprovalCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_role(UserRole.admin, UserRole.approver))
 ):
     service = ApprovalService(db)
     approval = await service.create_approval(current_user.org_id, data)
@@ -44,7 +45,7 @@ async def make_decision(
     approval_id: int,
     data: ApprovalDecision,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_role(UserRole.admin, UserRole.approver))
 ):
     service = ApprovalService(db)
     approval = await service.make_decision(approval_id, current_user.org_id, data)

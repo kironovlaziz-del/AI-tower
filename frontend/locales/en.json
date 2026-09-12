@@ -68,7 +68,8 @@
       "compute": "Compute Detector",
       "datasets": "Dataset Manager",
       "training": "Training Service",
-      "notifications": "Notification Service"
+      "notifications": "Notification Service",
+      "users": "Users"
     },
     "logout": "Sign out",
     "role_admin": "admin",
@@ -667,5 +668,42 @@
       "training_completed": "Model training completed",
       "training_failed": "Model training failed"
     }
+  },
+  "users": {
+    "title": "Users",
+    "invite": "Invite user",
+    "cancel": "Cancel",
+    "form_title": "Invite a user to your organization",
+    "name": "Name",
+    "name_placeholder": "Jane Doe",
+    "email": "Email",
+    "password": "Temporary password",
+    "password_hint": "At least 8 characters",
+    "role": "Role",
+    "submit": "Send invite",
+    "submitting": "Inviting…",
+    "failed": "Could not invite the user.",
+    "col_id": "ID",
+    "col_name": "Name",
+    "col_email": "Email",
+    "col_role": "Role",
+    "col_status": "Status",
+    "col_created": "Created",
+    "empty": "No users yet",
+    "loading": "Loading…",
+    "you": "you",
+    "change_role": "Change role",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "roles": {
+      "admin": "Admin",
+      "approver": "Approver",
+      "user": "User"
+    },
+    "statuses": {
+      "active": "active",
+      "disabled": "disabled"
+    },
+    "admin_only": "Only administrators can access this page."
   }
 }

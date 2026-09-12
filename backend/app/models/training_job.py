@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, func
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Float, func
 from sqlalchemy.dialects.postgresql import JSONB
 from app.core.database import Base
 
@@ -21,7 +21,22 @@ class TrainingJob(Base):
     metrics_json = Column(JSONB)
     model_path = Column(String(500))
     error_message = Column(Text)
+
+    # Progress reporting during training: 0-100 plus a short stage label
+    # ("Loading dataset", "Training step 42/120", ...). Updated by a
+    # transformers TrainerCallback on every logging step, and by the
+    # sklearn track at key checkpoints. NULL when the job has not started
+    # or the value is unknown.
+    progress_pct = Column(Float)
+    progress_stage = Column(String(255))
+
     created_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     started_at = Column(DateTime(timezone=True))
     finished_at = Column(DateTime(timezone=True))
+
+    @property
+    def has_model_artifact(self) -> bool:
+        """True when a downloadable artifact exists on disk. The actual
+        path stays server-side; the API only exposes this boolean."""
+        return bool(self.model_path)

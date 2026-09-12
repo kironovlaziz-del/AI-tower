@@ -94,6 +94,33 @@ export async function getMe() {
   return data;
 }
 
+
+// ---- Users (admin-only management) ----
+export async function listUsers() {
+  const { data } = await api.get<User[]>("/users/");
+  return data;
+}
+
+export async function inviteUser(payload: {
+  email: string;
+  name: string;
+  role: "admin" | "approver" | "user";
+  password: string;
+}) {
+  const { data } = await api.post<User>("/users/invite", payload);
+  return data;
+}
+
+export async function updateUserRole(id: number, role: "admin" | "approver" | "user") {
+  const { data } = await api.put<User>(`/users/${id}/role`, { role });
+  return data;
+}
+
+export async function updateUserStatus(id: number, status: "active" | "disabled") {
+  const { data } = await api.put<User>(`/users/${id}/status`, { status });
+  return data;
+}
+
 // ---- Policies (Policy Center) ----
 export async function listPolicies() {
   const { data } = await api.get<Policy[]>("/policies/");

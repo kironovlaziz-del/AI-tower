@@ -68,7 +68,8 @@
       "compute": "Hisoblash detektori",
       "datasets": "Ma'lumotlar to'plami",
       "training": "O'qitish xizmati",
-      "notifications": "Bildirishnoma xizmati"
+      "notifications": "Bildirishnoma xizmati",
+      "users": "Foydalanuvchilar"
     },
     "logout": "Chiqish",
     "role_admin": "administrator",
@@ -667,5 +668,42 @@
       "training_completed": "Model o'qitish yakunlandi",
       "training_failed": "Model o'qitish muvaffaqiyatsiz"
     }
+  },
+  "users": {
+    "title": "Foydalanuvchilar",
+    "invite": "Foydalanuvchi taklif qilish",
+    "cancel": "Bekor qilish",
+    "form_title": "Tashkilotingizga foydalanuvchi taklif qilish",
+    "name": "Ism",
+    "name_placeholder": "Aziza Karimova",
+    "email": "Email",
+    "password": "Vaqtinchalik parol",
+    "password_hint": "Kamida 8 ta belgi",
+    "role": "Rol",
+    "submit": "Taklifnoma yuborish",
+    "submitting": "Yuborilmoqda…",
+    "failed": "Foydalanuvchini taklif qilib bo'lmadi.",
+    "col_id": "ID",
+    "col_name": "Ism",
+    "col_email": "Email",
+    "col_role": "Rol",
+    "col_status": "Holat",
+    "col_created": "Yaratilgan",
+    "empty": "Hozircha foydalanuvchilar yo'q",
+    "loading": "Yuklanmoqda…",
+    "you": "siz",
+    "change_role": "Rolni o'zgartirish",
+    "deactivate": "Faolsizlantirish",
+    "activate": "Faollashtirish",
+    "roles": {
+      "admin": "Administrator",
+      "approver": "Tasdiqlovchi",
+      "user": "Foydalanuvchi"
+    },
+    "statuses": {
+      "active": "faol",
+      "disabled": "faolsiz"
+    },
+    "admin_only": "Bu sahifa faqat administratorlar uchun."
   }
 }

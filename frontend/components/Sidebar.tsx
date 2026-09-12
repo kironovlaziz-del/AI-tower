@@ -21,6 +21,7 @@ const NAV = [
       { href: "/policies", labelKey: "sidebar.nav.policies" },
       { href: "/use-cases", labelKey: "sidebar.nav.use_cases" },
       { href: "/providers", labelKey: "sidebar.nav.providers" },
+      { href: "/users", labelKey: "sidebar.nav.users", adminOnly: true },
     ],
   },
   {
@@ -67,19 +68,21 @@ export function Sidebar() {
         {NAV.map((group) => (
           <div key={group.sectionKey}>
             <div className="sidebar-section">{t(group.sectionKey)}</div>
-            {group.items.map((item) => {
-              const active =
-                pathname === item.href || pathname?.startsWith(item.href + "/");
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`sidebar-link${active ? " active" : ""}`}
-                >
-                  {t(item.labelKey)}
-                </Link>
-              );
-            })}
+            {group.items
+              .filter((item: any) => !item.adminOnly || user?.role === "admin")
+              .map((item) => {
+                const active =
+                  pathname === item.href || pathname?.startsWith(item.href + "/");
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`sidebar-link${active ? " active" : ""}`}
+                  >
+                    {t(item.labelKey)}
+                  </Link>
+                );
+              })}
           </div>
         ))}
       </nav>

@@ -11,11 +11,58 @@ from app.models.dataset import Dataset
 from app.services import notification_service
 
 
-def _build_sklearn_model(algorithm: str, hyperparameters: dict):
+# ---------------------------------------------------------------------------
+# Progress reporting
+# ---------------------------------------------------------------------------
+
+def _update_progress(job_id: int, pct: float, stage: str) -> None:
+    """
+    Write progress to the training_jobs row using its own short-lived
+    session, so the transformers callback does not need to hold onto the
+    main worker session.
+    """
+    db = SyncSessionLocal()
+    try:
+        job = db.get(TrainingJob, job_id)
+        if job:
+            job.progress_pct = max(0.0, min(round(pct, 2), 100.0))
+            job.progress_stage = stage[:255] if stage else None
+            db.commit()
+    except Exception:  # noqa: BLE001 - progress reporting must not fail the job
+        db.rollback()
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Sklearn track
+# ---------------------------------------------------------------------------
+
+def _resolve_class_weight(hyperparameters: dict) -> str | None:
+    """
+    Class imbalance silently kills classifier accuracy: on a 95/5 split, a
+    model that always predicts the majority class scores 95% while being
+    useless. Scikit-learn's 'balanced' mode reweights the loss by inverse
+    class frequency.
+
+    Default is 'balanced' for classification. Users can override to None
+    (no reweighting) via hyperparameters.class_weight = null.
+    """
+    if "class_weight" in hyperparameters:
+        return hyperparameters["class_weight"]
+    return "balanced"
+
+
+def _build_sklearn_model(algorithm: str, hyperparameters: dict, is_classification: bool):
+    class_weight = _resolve_class_weight(hyperparameters) if is_classification else None
+
     if algorithm == "logistic_regression":
         from sklearn.linear_model import LogisticRegression
 
-        return LogisticRegression(max_iter=hyperparameters.get("max_iter", 1000))
+        return LogisticRegression(
+            max_iter=hyperparameters.get("max_iter", 1000),
+            class_weight=class_weight,
+        )
 
     if algorithm == "random_forest_classifier":
         from sklearn.ensemble import RandomForestClassifier
@@ -23,6 +70,7 @@ def _build_sklearn_model(algorithm: str, hyperparameters: dict):
         return RandomForestClassifier(
             n_estimators=hyperparameters.get("n_estimators", 100),
             max_depth=hyperparameters.get("max_depth"),
+            class_weight=class_weight,
             random_state=42,
         )
 
@@ -50,6 +98,8 @@ def _run_sklearn_training(job: "TrainingJob", dataset: "Dataset") -> None:
     from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
     from sklearn.preprocessing import LabelEncoder
 
+    _update_progress(job.id, 10.0, "Loading dataset")
+
     sep = "\t" if dataset.file_format == "tsv" else ","
     df = pd.read_csv(dataset.file_path, sep=sep)
 
@@ -60,7 +110,25 @@ def _run_sklearn_training(job: "TrainingJob", dataset: "Dataset") -> None:
         )
 
     y_raw = df[job.target_column]
-    X = df.drop(columns=[job.target_column]).select_dtypes(include="number")
+    all_features = df.drop(columns=[job.target_column])
+    X = all_features.select_dtypes(include="number")
+
+    dropped_columns = [c for c in all_features.columns if c not in X.columns]
+    warnings: list[str] = []
+    if dropped_columns:
+        dropped_ratio = len(dropped_columns) / max(len(all_features.columns), 1)
+        if dropped_ratio >= 0.5:
+            warnings.append(
+                f"Dropped {len(dropped_columns)} of {len(all_features.columns)} "
+                f"non-numeric feature columns ({', '.join(dropped_columns[:5])}"
+                f"{'…' if len(dropped_columns) > 5 else ''}). Consider one-hot "
+                f"encoding or removing them before upload."
+            )
+        else:
+            warnings.append(
+                f"Dropped non-numeric columns: {', '.join(dropped_columns[:10])}"
+                f"{'…' if len(dropped_columns) > 10 else ''}."
+            )
 
     if X.shape[1] == 0:
         raise ValueError(
@@ -89,10 +157,19 @@ def _run_sklearn_training(job: "TrainingJob", dataset: "Dataset") -> None:
     else:
         y = y_raw
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
 
-    model = _build_sklearn_model(job.algorithm, job.hyperparameters_json or {})
+    _update_progress(job.id, 40.0, "Fitting model")
+
+    model = _build_sklearn_model(
+        job.algorithm, job.hyperparameters_json or {}, is_classification
+    )
     model.fit(X_train, y_train)
+
+    _update_progress(job.id, 85.0, "Evaluating")
+
     y_pred = model.predict(X_test)
 
     if is_classification:
@@ -102,6 +179,11 @@ def _run_sklearn_training(job: "TrainingJob", dataset: "Dataset") -> None:
             "test_rows": int(len(X_test)),
             "train_rows": int(len(X_train)),
         }
+        if y_test.nunique() == 1:
+            warnings.append(
+                "Test split contains only one class - accuracy and F1 are "
+                "not meaningful on this run. Add more rows or balance the dataset."
+            )
     else:
         metrics = {
             "mse": float(mean_squared_error(y_test, y_pred)),
@@ -109,6 +191,9 @@ def _run_sklearn_training(job: "TrainingJob", dataset: "Dataset") -> None:
             "test_rows": int(len(X_test)),
             "train_rows": int(len(X_train)),
         }
+
+    if warnings:
+        metrics["warnings"] = warnings
 
     models_dir = Path(settings.MODELS_DIR) / str(job.org_id)
     models_dir.mkdir(parents=True, exist_ok=True)
@@ -118,6 +203,8 @@ def _run_sklearn_training(job: "TrainingJob", dataset: "Dataset") -> None:
         model_path,
     )
 
+    _update_progress(job.id, 100.0, "Completed")
+
     job.feature_columns_json = list(X.columns)
     job.metrics_json = metrics
     job.model_path = str(model_path)
@@ -125,24 +212,33 @@ def _run_sklearn_training(job: "TrainingJob", dataset: "Dataset") -> None:
     job.error_message = None
 
 
+# ---------------------------------------------------------------------------
+# Transformer track - text classification
+# ---------------------------------------------------------------------------
+
+def _make_classification_metrics():
+    """compute_metrics function for the Trainer, resolved lazily."""
+    import numpy as np
+    from sklearn.metrics import accuracy_score, f1_score
+
+    def compute_metrics(eval_pred):
+        logits, labels = eval_pred
+        preds = np.argmax(logits, axis=-1)
+        return {
+            "accuracy": float(accuracy_score(labels, preds)),
+            "f1_weighted": float(f1_score(labels, preds, average="weighted")),
+        }
+
+    return compute_metrics
+
+
 def _run_transformer_training(job: "TrainingJob", dataset: "Dataset") -> None:
-    """
-    Fine-tunes a Hugging Face sequence classification model on a CSV text
-    dataset. This is a single code path for both CPU and GPU: PyTorch's
-    torch.cuda.is_available() decides the device at runtime, and the
-    Trainer moves the model there automatically. Nothing here needs to
-    change if this worker later runs on a GPU box - only which base_model
-    is allowed to be selected changes (see transformer_models.py), and the
-    torch wheel installed (CPU-only vs CUDA build).
-    """
     import pandas as pd
     import torch
-    from sklearn.metrics import accuracy_score, f1_score
-    from sklearn.model_selection import train_test_split
-    from sklearn.preprocessing import LabelEncoder
     from transformers import (
         AutoModelForSequenceClassification,
         AutoTokenizer,
+        TrainerCallback,
         Trainer,
         TrainingArguments,
     )
@@ -152,13 +248,16 @@ def _run_transformer_training(job: "TrainingJob", dataset: "Dataset") -> None:
     if not text_column:
         raise ValueError("hyperparameters.text_column is required for this task type.")
 
+    _update_progress(job.id, 5.0, "Loading dataset")
+
     sep = "\t" if dataset.file_format == "tsv" else ","
     df = pd.read_csv(dataset.file_path, sep=sep)
 
     for col in (text_column, job.target_column):
         if col not in df.columns:
             raise ValueError(
-                f"Column '{col}' not found in dataset. Available columns: {', '.join(df.columns)}"
+                f"Column '{col}' not found in dataset. "
+                f"Available columns: {', '.join(df.columns)}"
             )
 
     df = df[[text_column, job.target_column]].dropna()
@@ -167,6 +266,9 @@ def _run_transformer_training(job: "TrainingJob", dataset: "Dataset") -> None:
             f"Only {len(df)} usable rows after dropping missing values - "
             "need at least 20 to fine-tune a text classifier meaningfully."
         )
+
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import LabelEncoder
 
     texts = df[text_column].astype(str).tolist()
     encoder = LabelEncoder()
@@ -179,6 +281,10 @@ def _run_transformer_training(job: "TrainingJob", dataset: "Dataset") -> None:
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+
+    _update_progress(job.id, 10.0, "Tokenizing")
 
     tokenizer = AutoTokenizer.from_pretrained(job.base_model)
     max_length = int(hyperparameters.get("max_length", 256))
@@ -205,12 +311,33 @@ def _run_transformer_training(job: "TrainingJob", dataset: "Dataset") -> None:
     train_dataset = _TextDataset(train_encodings, train_labels)
     test_dataset = _TextDataset(test_encodings, test_labels)
 
+    _update_progress(job.id, 15.0, "Loading model")
+
     model = AutoModelForSequenceClassification.from_pretrained(
         job.base_model, num_labels=num_labels
-    )
+    ).to(device)
 
     models_dir = Path(settings.MODELS_DIR) / str(job.org_id) / f"job_{job.id}"
     models_dir.mkdir(parents=True, exist_ok=True)
+
+    # Progress callback — runs on every logging step and writes the current
+    # global_step / max_steps ratio to the job row so the UI can render a
+    # live progress bar.
+    class _ProgressCallback(TrainerCallback):
+        def on_log(self, args, state, control, **kwargs):
+            if state.max_steps and state.max_steps > 0:
+                # Reserve 15-100% for training; 0-15% covers data prep.
+                pct = 15.0 + 85.0 * (state.global_step / state.max_steps)
+                _update_progress(
+                    job.id,
+                    pct,
+                    f"Training step {state.global_step}/{state.max_steps}",
+                )
+            return control
+
+        def on_train_end(self, args, state, control, **kwargs):
+            _update_progress(job.id, 95.0, "Evaluating")
+            return control
 
     training_args = TrainingArguments(
         output_dir=str(models_dir / "_trainer_tmp"),
@@ -219,19 +346,29 @@ def _run_transformer_training(job: "TrainingJob", dataset: "Dataset") -> None:
         per_device_eval_batch_size=int(hyperparameters.get("batch_size", 8)),
         learning_rate=float(hyperparameters.get("learning_rate", 5e-5)),
         logging_steps=10,
-        save_strategy="no",
+        save_strategy="epoch",
+        save_total_limit=2,
+        eval_strategy="epoch",
+        load_best_model_at_end=True,
+        metric_for_best_model="accuracy",
+        greater_is_better=True,
         report_to=[],
         disable_tqdm=True,
         use_cpu=(device.type == "cpu"),
     )
 
-    trainer = Trainer(model=model, args=training_args, train_dataset=train_dataset)
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=test_dataset,
+        compute_metrics=_make_classification_metrics(),
+        callbacks=[_ProgressCallback()],
+    )
 
     try:
         trainer.train()
     except RuntimeError as exc:
-        # Covers both CUDA OOM and CPU allocation failures - torch raises
-        # RuntimeError for both, just with different message text.
         if "out of memory" in str(exc).lower() or "alloc" in str(exc).lower():
             raise ValueError(
                 f"Out of memory while training '{job.base_model}' "
@@ -243,6 +380,8 @@ def _run_transformer_training(job: "TrainingJob", dataset: "Dataset") -> None:
 
     predictions = trainer.predict(test_dataset)
     y_pred = predictions.predictions.argmax(axis=-1)
+
+    from sklearn.metrics import accuracy_score, f1_score
 
     metrics = {
         "accuracy": float(accuracy_score(test_labels, y_pred)),
@@ -258,6 +397,8 @@ def _run_transformer_training(job: "TrainingJob", dataset: "Dataset") -> None:
         json.dumps({"label_classes": label_classes, "mode": "transformer"})
     )
 
+    _update_progress(job.id, 100.0, "Completed")
+
     job.feature_columns_json = [text_column]
     job.metrics_json = metrics
     job.model_path = str(models_dir)
@@ -265,14 +406,11 @@ def _run_transformer_training(job: "TrainingJob", dataset: "Dataset") -> None:
     job.error_message = None
 
 
+# ---------------------------------------------------------------------------
+# Transformer track - text generation
+# ---------------------------------------------------------------------------
+
 def _run_generation_training(job: "TrainingJob", dataset: "Dataset") -> None:
-    """
-    Fine-tunes a GPT-2-family causal language model on a text column for
-    free-form generation. Unsupervised (next-token prediction) - there's no
-    separate label column, unlike the classification branch. Same
-    CPU/GPU-agnostic pattern as _run_transformer_training: torch decides the
-    device, only which base_model is allowed differs by hardware.
-    """
     import math
 
     import pandas as pd
@@ -281,6 +419,7 @@ def _run_generation_training(job: "TrainingJob", dataset: "Dataset") -> None:
         AutoModelForCausalLM,
         AutoTokenizer,
         DataCollatorForLanguageModeling,
+        TrainerCallback,
         Trainer,
         TrainingArguments,
     )
@@ -290,11 +429,14 @@ def _run_generation_training(job: "TrainingJob", dataset: "Dataset") -> None:
     if not text_column:
         raise ValueError("hyperparameters.text_column is required for this task type.")
 
+    _update_progress(job.id, 5.0, "Loading dataset")
+
     sep = "\t" if dataset.file_format == "tsv" else ","
     df = pd.read_csv(dataset.file_path, sep=sep)
     if text_column not in df.columns:
         raise ValueError(
-            f"Column '{text_column}' not found in dataset. Available columns: {', '.join(df.columns)}"
+            f"Column '{text_column}' not found in dataset. "
+            f"Available columns: {', '.join(df.columns)}"
         )
 
     texts = [t for t in df[text_column].dropna().astype(str).tolist() if t.strip()]
@@ -305,6 +447,10 @@ def _run_generation_training(job: "TrainingJob", dataset: "Dataset") -> None:
         )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+
+    _update_progress(job.id, 10.0, "Tokenizing")
 
     tokenizer = AutoTokenizer.from_pretrained(job.base_model)
     if tokenizer.pad_token is None:
@@ -332,11 +478,29 @@ def _run_generation_training(job: "TrainingJob", dataset: "Dataset") -> None:
 
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
+    _update_progress(job.id, 15.0, "Loading model")
+
     model = AutoModelForCausalLM.from_pretrained(job.base_model)
     model.resize_token_embeddings(len(tokenizer))
+    model.to(device)
 
     models_dir = Path(settings.MODELS_DIR) / str(job.org_id) / f"job_{job.id}"
     models_dir.mkdir(parents=True, exist_ok=True)
+
+    class _ProgressCallback(TrainerCallback):
+        def on_log(self, args, state, control, **kwargs):
+            if state.max_steps and state.max_steps > 0:
+                pct = 15.0 + 85.0 * (state.global_step / state.max_steps)
+                _update_progress(
+                    job.id,
+                    pct,
+                    f"Training step {state.global_step}/{state.max_steps}",
+                )
+            return control
+
+        def on_train_end(self, args, state, control, **kwargs):
+            _update_progress(job.id, 95.0, "Evaluating")
+            return control
 
     training_args = TrainingArguments(
         output_dir=str(models_dir / "_trainer_tmp"),
@@ -345,7 +509,12 @@ def _run_generation_training(job: "TrainingJob", dataset: "Dataset") -> None:
         per_device_eval_batch_size=int(hyperparameters.get("batch_size", 4)),
         learning_rate=float(hyperparameters.get("learning_rate", 5e-5)),
         logging_steps=10,
-        save_strategy="no",
+        save_strategy="epoch",
+        save_total_limit=2,
+        eval_strategy="epoch",
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_loss",
+        greater_is_better=False,
         report_to=[],
         disable_tqdm=True,
         use_cpu=(device.type == "cpu"),
@@ -355,7 +524,9 @@ def _run_generation_training(job: "TrainingJob", dataset: "Dataset") -> None:
         model=model,
         args=training_args,
         train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
         data_collator=data_collator,
+        callbacks=[_ProgressCallback()],
     )
 
     try:
@@ -389,12 +560,18 @@ def _run_generation_training(job: "TrainingJob", dataset: "Dataset") -> None:
     tokenizer.save_pretrained(models_dir)
     (models_dir / "meta.json").write_text(json.dumps({"mode": "transformer_generation"}))
 
+    _update_progress(job.id, 100.0, "Completed")
+
     job.feature_columns_json = [text_column]
     job.metrics_json = metrics
     job.model_path = str(models_dir)
     job.status = "completed"
     job.error_message = None
 
+
+# ---------------------------------------------------------------------------
+# Celery entry point
+# ---------------------------------------------------------------------------
 
 @celery_app.task(name="training.train_model")
 def train_model(job_id: int) -> None:
@@ -404,12 +581,12 @@ def train_model(job_id: int) -> None:
         if not job:
             return
         if job.status == "cancelled":
-            # Revoked while still queued - the API already set the final
-            # status, nothing to do here.
             return
 
         job.status = "running"
         job.started_at = datetime.now(timezone.utc)
+        job.progress_pct = 0.0
+        job.progress_stage = "Starting"
         db.commit()
 
         try:
@@ -427,22 +604,26 @@ def train_model(job_id: int) -> None:
         except Exception as exc:  # noqa: BLE001 - report any failure back to the job row
             job.status = "failed"
             job.error_message = f"{exc}\n{traceback.format_exc(limit=3)}"
+            job.progress_stage = "Failed"
 
         job.finished_at = datetime.now(timezone.utc)
+        if job.status == "completed":
+            job.progress_pct = 100.0
+            job.progress_stage = "Completed"
         db.commit()
 
         if job.status == "completed":
             notification_service.notify_sync(
                 db, job.org_id, "training_completed",
-                f"Обучение завершено: {job.name}",
-                f"Задание #{job.id} ({job.base_model or job.algorithm}) успешно завершено.",
+                f"Training completed: {job.name}",
+                f"Job #{job.id} ({job.base_model or job.algorithm}) finished successfully.",
                 {"job_id": job.id, "metrics": job.metrics_json},
             )
         elif job.status == "failed":
             notification_service.notify_sync(
                 db, job.org_id, "training_failed",
-                f"Обучение не удалось: {job.name}",
-                f"Задание #{job.id} завершилось с ошибкой: {job.error_message[:300] if job.error_message else 'см. детали в интерфейсе'}",
+                f"Training failed: {job.name}",
+                f"Job #{job.id} failed: {job.error_message[:300] if job.error_message else 'see details in the UI'}",
                 {"job_id": job.id},
             )
     finally:

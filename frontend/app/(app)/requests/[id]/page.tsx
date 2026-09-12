@@ -43,7 +43,7 @@ export default function RequestDetailPage() {
         setRequest(r);
         setResponse(resp);
         setOverrides(ov);
-        setEditText(r.masked_input_text || r.input_text || "");
+        setEditText(r.masked_input_text || "");
       })
       .finally(() => setLoading(false));
   }
@@ -177,7 +177,7 @@ export default function RequestDetailPage() {
                     className="btn btn-sm"
                     onClick={() => {
                       setEditMode(false);
-                      setEditText(request.masked_input_text || request.input_text || "");
+                      setEditText(request.masked_input_text || "");
                     }}
                   >
                     {t("common.cancel")}
@@ -186,7 +186,7 @@ export default function RequestDetailPage() {
               </>
             ) : (
               <div className="text-block">
-                {request.masked_input_text || request.input_text || "—"}
+                {request.masked_input_text || "—"}
               </div>
             )}
             {request.firewall_flags && request.firewall_flags.length > 0 && (

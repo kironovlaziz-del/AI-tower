@@ -6,7 +6,8 @@ from app.schemas.provider import ProviderCreate, ProviderOut, ProviderUpdate
 from app.services.provider_service import ProviderService
 from app.services.audit_service import AuditService
 from app.models.user import User
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_role
+from app.models.user import UserRole
 
 router = APIRouter()
 
@@ -15,7 +16,7 @@ router = APIRouter()
 async def create_provider(
     data: ProviderCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_role(UserRole.admin))
 ):
     service = ProviderService(db)
     provider = await service.create_provider(current_user.org_id, data)
@@ -50,7 +51,7 @@ async def update_provider(
     provider_id: int,
     data: ProviderUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_role(UserRole.admin))
 ):
     service = ProviderService(db)
     provider = await service.update_provider(provider_id, current_user.org_id, data)
