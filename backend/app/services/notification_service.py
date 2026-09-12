@@ -12,6 +12,7 @@ installs won't have SMTP configured on day one, and that shouldn't block
 webhook notifications or the rest of the platform.
 """
 
+import asyncio
 import logging
 import smtplib
 from email.mime.text import MIMEText
@@ -79,9 +80,20 @@ async def notify(
             NotificationChannel.enabled == True,  # noqa: E712
         )
     )
-    for channel in result.scalars().all():
-        if event_type in (channel.events_json or []):
-            _dispatch(channel, subject, message, metadata)
+    channels = list(result.scalars().all())
+    if not channels:
+        return
+
+    # SMTP and webhook delivery are blocking calls. Running them on the
+    # event loop would freeze every other coroutine for the duration of
+    # the network round-trip. Fan out to a thread pool instead.
+    tasks = [
+        asyncio.to_thread(_dispatch, channel, subject, message, metadata)
+        for channel in channels
+        if event_type in (channel.events_json or [])
+    ]
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 
 def notify_sync(

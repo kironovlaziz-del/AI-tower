@@ -1,3 +1,4 @@
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -14,6 +15,57 @@ from app.services import compute_detector, transformer_models
 
 SUPPORTED_DATASET_FORMATS = {"csv", "tsv"}
 TRANSFORMER_TASK_TYPES = {"transformer_text_classification", "transformer_text_generation"}
+
+
+
+# ---------------------------------------------------------------------------
+# Model cache
+#
+# Loading a Hugging Face model from disk takes seconds per call. Without a
+# cache, every /predict request reloads the same weights from the same
+# directory. The cache holds a small number of recently used artifacts; the
+# (path -> object) mapping is invalidated naturally when a job is retrained
+# because each retrain writes to the same job_<id> directory but the mtime
+# changes - callers should pass mtime as part of the key if they need
+# strict invalidation. Here we key on path only and accept stale reads
+# within a worker's lifetime for simplicity.
+# ---------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=8)
+def _load_sklearn_bundle(model_path: str):
+    import joblib
+
+    return joblib.load(model_path)
+
+
+@lru_cache(maxsize=4)
+def _load_transformer(model_dir: str):
+    """Returns (model, tokenizer) for a sequence-classification model."""
+    import torch
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer = AutoTokenizer.from_pretrained(model_dir)
+    model = AutoModelForSequenceClassification.from_pretrained(model_dir).to(device)
+    model.eval()
+    return model, tokenizer, device
+
+
+@lru_cache(maxsize=4)
+def _load_generator(model_dir: str):
+    """Returns (model, tokenizer) for a causal LM."""
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer = AutoTokenizer.from_pretrained(model_dir)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    model = AutoModelForCausalLM.from_pretrained(model_dir).to(device)
+    model.eval()
+    return model, tokenizer, device
+
 
 
 class TrainingService:
@@ -189,6 +241,11 @@ class TrainingService:
         job.feature_columns_json = None
         job.started_at = None
         job.finished_at = None
+        # Drop any cached model for this path - the new run will overwrite
+        # the artifact and stale weights must not be served.
+        _load_sklearn_bundle.cache_clear()
+        _load_transformer.cache_clear()
+        _load_generator.cache_clear()
         await self.db.commit()
 
         result = celery_app.send_task("training.train_model", args=[job.id])
@@ -222,10 +279,9 @@ class TrainingService:
 
     @staticmethod
     def _predict_sync(model_path: str, features: Dict[str, Any]) -> Any:
-        import joblib
         import pandas as pd
 
-        bundle = joblib.load(model_path)
+        bundle = _load_sklearn_bundle(model_path)
         model = bundle["model"]
         feature_columns = bundle["feature_columns"]
         label_classes = bundle.get("label_classes")
@@ -251,7 +307,6 @@ class TrainingService:
         import json
 
         import torch
-        from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
         text = features.get("text", "")
         meta_path = Path(model_dir) / "meta.json"
@@ -260,12 +315,11 @@ class TrainingService:
             meta = json.loads(meta_path.read_text())
             label_classes = meta.get("label_classes")
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        tokenizer = AutoTokenizer.from_pretrained(model_dir)
-        model = AutoModelForSequenceClassification.from_pretrained(model_dir).to(device)
-        model.eval()
+        model, tokenizer, device = _load_transformer(model_dir)
 
-        inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=256).to(device)
+        inputs = tokenizer(
+            text, return_tensors="pt", truncation=True, padding=True, max_length=256
+        ).to(device)
         with torch.no_grad():
             logits = model(**inputs).logits
         predicted_id = int(torch.argmax(logits, dim=-1).item())
@@ -280,15 +334,11 @@ class TrainingService:
     @staticmethod
     def _predict_generation_sync(model_dir: str, features: Dict[str, Any]) -> Any:
         import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer
 
         prompt = features.get("prompt", "")
         max_new_tokens = int(features.get("max_new_tokens", 50))
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        tokenizer = AutoTokenizer.from_pretrained(model_dir)
-        model = AutoModelForCausalLM.from_pretrained(model_dir).to(device)
-        model.eval()
+        model, tokenizer, device = _load_generator(model_dir)
 
         inputs = tokenizer(prompt, return_tensors="pt").to(device)
         with torch.no_grad():

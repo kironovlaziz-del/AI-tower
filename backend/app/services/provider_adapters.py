@@ -5,6 +5,10 @@ Kept deliberately separate from RequestService so the request/policy/audit
 flow doesn't need to know the wire format of any given provider. Add a new
 `type` branch here to support another provider without touching anything
 else in the request pipeline.
+
+A single long-lived AsyncClient is shared across requests so TCP
+connections and TLS sessions are reused. httpx's connection pool handles
+concurrency internally.
 """
 
 from typing import Any, Dict, Optional, Tuple
@@ -12,6 +16,23 @@ from typing import Any, Dict, Optional, Tuple
 import httpx
 
 DEFAULT_TIMEOUT = httpx.Timeout(60.0, connect=10.0)
+
+# One shared client for the lifetime of the process. httpx.AsyncClient is
+# safe to use concurrently and pools connections by (scheme, host, port).
+_http_client: Optional[httpx.AsyncClient] = None
+
+
+def _get_client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None:
+        _http_client = httpx.AsyncClient(
+            timeout=DEFAULT_TIMEOUT,
+            limits=httpx.Limits(
+                max_keepalive_connections=20,
+                max_connections=100,
+            ),
+        )
+    return _http_client
 
 
 class ProviderCallError(Exception):
@@ -34,7 +55,10 @@ async def call_provider(
 
     if provider_type == "openai":
         return await _call_openai_compatible(
-            api_key, base_url or "https://api.openai.com/v1", default_model or "gpt-4o-mini", prompt
+            api_key,
+            base_url or "https://api.openai.com/v1",
+            default_model or "gpt-4o-mini",
+            prompt,
         )
     if provider_type == "azure_openai":
         if not base_url:
@@ -46,13 +70,12 @@ async def call_provider(
         )
     if provider_type == "anthropic":
         return await _call_anthropic(
-            api_key, base_url or "https://api.anthropic.com/v1", default_model or "claude-3-5-haiku-20241022", prompt
+            api_key,
+            base_url or "https://api.anthropic.com/v1",
+            default_model or "claude-3-5-haiku-20241022",
+            prompt,
         )
 
-    # custom / unknown types: generic JSON POST, expects {"prompt": ...} in,
-    # {"response": "..."} or {"text": "..."} out. Good enough for a locally
-    # hosted inference server (e.g. the Training Service's predict-style
-    # endpoints) that speaks a simple JSON contract.
     if not base_url:
         raise ProviderCallError(
             "Custom connections require a base_url pointing at the inference endpoint."
@@ -64,23 +87,19 @@ async def _call_openai_compatible(
     api_key: str, base_url: str, model: str, prompt: str, azure: bool = False
 ) -> Tuple[str, Dict[str, Any]]:
     url = base_url.rstrip("/") + "/chat/completions"
-    headers = (
-        {"api-key": api_key} if azure else {"Authorization": f"Bearer {api_key}"}
-    )
+    headers = {"api-key": api_key} if azure else {"Authorization": f"Bearer {api_key}"}
     body = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
     }
-    async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
-        try:
-            resp = await client.post(url, headers=headers, json=body)
-        except httpx.HTTPError as exc:
-            raise ProviderCallError(f"Network error calling provider: {exc}") from exc
+    client = _get_client()
+    try:
+        resp = await client.post(url, headers=headers, json=body)
+    except httpx.HTTPError as exc:
+        raise ProviderCallError(f"Network error calling provider: {exc}") from exc
 
     if resp.status_code >= 400:
-        raise ProviderCallError(
-            f"Provider returned {resp.status_code}: {resp.text[:300]}"
-        )
+        raise ProviderCallError(f"Provider returned {resp.status_code}: {resp.text[:300]}")
 
     data = resp.json()
     try:
@@ -103,16 +122,14 @@ async def _call_anthropic(
         "max_tokens": 1024,
         "messages": [{"role": "user", "content": prompt}],
     }
-    async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
-        try:
-            resp = await client.post(url, headers=headers, json=body)
-        except httpx.HTTPError as exc:
-            raise ProviderCallError(f"Network error calling provider: {exc}") from exc
+    client = _get_client()
+    try:
+        resp = await client.post(url, headers=headers, json=body)
+    except httpx.HTTPError as exc:
+        raise ProviderCallError(f"Network error calling provider: {exc}") from exc
 
     if resp.status_code >= 400:
-        raise ProviderCallError(
-            f"Provider returned {resp.status_code}: {resp.text[:300]}"
-        )
+        raise ProviderCallError(f"Provider returned {resp.status_code}: {resp.text[:300]}")
 
     data = resp.json()
     try:
@@ -124,17 +141,22 @@ async def _call_anthropic(
 
 async def _call_custom(api_key: str, base_url: str, prompt: str) -> Tuple[str, Dict[str, Any]]:
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-    async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
-        try:
-            resp = await client.post(base_url, headers=headers, json={"prompt": prompt})
-        except httpx.HTTPError as exc:
-            raise ProviderCallError(f"Network error calling provider: {exc}") from exc
+    client = _get_client()
+    try:
+        resp = await client.post(base_url, headers=headers, json={"prompt": prompt})
+    except httpx.HTTPError as exc:
+        raise ProviderCallError(f"Network error calling provider: {exc}") from exc
 
     if resp.status_code >= 400:
-        raise ProviderCallError(
-            f"Provider returned {resp.status_code}: {resp.text[:300]}"
-        )
+        raise ProviderCallError(f"Provider returned {resp.status_code}: {resp.text[:300]}")
 
     data = resp.json()
-    text = data.get("response") or data.get("text") or str(data)
+    # Note: values like 0 or "" are valid responses - do not use `or`,
+    # which would skip them and fall through to str(data).
+    if "response" in data:
+        text = data["response"]
+    elif "text" in data:
+        text = data["text"]
+    else:
+        text = str(data)
     return text, data

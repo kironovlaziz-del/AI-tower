@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     # enable for local debugging only.
     DEBUG: bool = False
 
+    # Comma-separated list of allowed frontend origins for CORS. Never use
+    # "*" together with allow_credentials=True - browsers reject it and it
+    # lets any site make authenticated requests as the logged-in user.
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+
+
     # Database
     POSTGRES_USER: str = "ai_user"
     POSTGRES_PASSWORD: str = "ai_password"

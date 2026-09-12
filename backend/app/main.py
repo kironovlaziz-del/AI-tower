@@ -26,13 +26,18 @@ app = FastAPI(
     redoc_url=None if _is_prod else "/redoc",
 )
 
-# CORS
+# CORS - origins come from settings so production can lock this down
+# without a code change. Wildcard + credentials is intentionally avoided:
+# browsers reject that combination, and it would let any site issue
+# authenticated requests as the logged-in user.
+_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Include routers
