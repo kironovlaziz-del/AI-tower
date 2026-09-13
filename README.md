@@ -1,5 +1,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI](https://github.com/kironovlaziz-del/AI-tower/actions/workflows/ci.yml/badge.svg)](https://github.com/kironovlaziz-del/AI-tower/actions/workflows/ci.yml)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 # AI Control Tower
 
@@ -352,6 +354,15 @@ aict-restart
 # 2. Restart:
 aict-restart
 ```
+
+## Contributing
+
+We welcome bug reports, feature requests, and pull requests. Please read
+[CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
+
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security policy](SECURITY.md) — for reporting vulnerabilities privately
+- [Changelog](CHANGELOG.md)
 
 ## License
 
