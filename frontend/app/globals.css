@@ -1004,3 +1004,12 @@ tbody tr.clickable:hover {
   outline-offset: -1px;
   border-color: var(--accent);
 }
+
+/* ---------- dashboard grid ---------- */
+
+.dashboard-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}

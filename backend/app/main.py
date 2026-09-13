@@ -14,6 +14,7 @@ from app.api import compute
 from app.api import training_jobs
 from app.api import notification_channels
 from app.api import deployments
+from app.api import dashboard
 
 
 _is_prod = settings.ENVIRONMENT == "production"
@@ -58,6 +59,7 @@ app.include_router(compute.router, prefix=f"{settings.API_V1_STR}/compute", tags
 app.include_router(training_jobs.router, prefix=f"{settings.API_V1_STR}/training-jobs", tags=["training-jobs"])
 app.include_router(notification_channels.router, prefix=f"{settings.API_V1_STR}/notification-channels", tags=["notifications"])
 app.include_router(deployments.router, prefix=f"{settings.API_V1_STR}/deployments", tags=["deployments"])
+app.include_router(dashboard.router, prefix=f"{settings.API_V1_STR}/dashboard", tags=["dashboard"])
 
 
 

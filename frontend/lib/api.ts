@@ -690,3 +690,36 @@ export async function chatWithDeployment(
   );
   return data;
 }
+
+// ---- Dashboard stats ----
+export interface DayBucket {
+  date: string;
+  total: number;
+  completed: number;
+  blocked: number;
+  failed: number;
+}
+
+export interface DashboardStats {
+  window_days: number;
+  requests_by_day: DayBucket[];
+  requests_by_status: Record<string, number>;
+  incidents_by_severity: Record<string, number>;
+  training_by_status: Record<string, number>;
+  deployments_by_status: Record<string, number>;
+  total_requests: number;
+  total_incidents: number;
+  total_training_jobs: number;
+  total_deployments: number;
+  active_deployments: number;
+  pending_approvals: number;
+  total_datasets: number;
+  total_policies: number;
+}
+
+export async function fetchDashboardStats(days = 7): Promise<DashboardStats> {
+  const { data } = await api.get<DashboardStats>("/dashboard/stats", {
+    params: { days },
+  });
+  return data;
+}
