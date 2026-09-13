@@ -46,3 +46,20 @@ Data sources worth considering:
 
 Aim for at least 3,000–5,000 labelled sentences before expecting
 production-grade accuracy on general text.
+
+## First-time setup
+
+The dataset and model are NOT committed to git. After cloning, build
+them locally:
+
+    cd backend
+    source .venv/bin/activate
+    pip install spacy==3.8.2
+    python -m spacy download en_core_web_sm
+    python -m ner_training.scripts.build_dataset
+    python -m ner_training.scripts.compile_corpus
+    python -m ner_training.scripts.train
+
+Takes 2-3 minutes on CPU. The model lands in
+ner_training/output/uz_ner_model/ and is picked up automatically by
+the Prompt Firewall (see PROMPT_FIREWALL_NER_MODELS in config).
