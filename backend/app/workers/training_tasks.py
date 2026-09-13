@@ -17,16 +17,17 @@ from app.services import notification_service
 
 def _update_progress(job_id: int, pct: float, stage: str) -> None:
     """
-    Write progress to the training_jobs row.
+    Persist progress to the training_jobs row and broadcast it on the
+    Redis pub/sub channel used by the SSE endpoint.
 
     Uses a direct UPDATE on exactly two columns instead of loading the row
-    through the ORM. The earlier ORM version caused a race: the main
-    worker session holds its own snapshot of the job, and a flush after a
-    progress update could write stale status / finished_at back over the
-    newer values. An UPDATE that only touches progress_pct and
-    progress_stage is safe to run from any session at any time.
+    through the ORM - the earlier ORM version caused a race with the main
+    worker session that could write stale status / finished_at back.
     """
     from sqlalchemy import update
+
+    normalized_pct = max(0.0, min(round(pct, 2), 100.0))
+    normalized_stage = stage[:255] if stage else None
 
     db = SyncSessionLocal()
     try:
@@ -34,8 +35,8 @@ def _update_progress(job_id: int, pct: float, stage: str) -> None:
             update(TrainingJob)
             .where(TrainingJob.id == job_id)
             .values(
-                progress_pct=max(0.0, min(round(pct, 2), 100.0)),
-                progress_stage=stage[:255] if stage else None,
+                progress_pct=normalized_pct,
+                progress_stage=normalized_stage,
             )
         )
         db.commit()
@@ -43,6 +44,14 @@ def _update_progress(job_id: int, pct: float, stage: str) -> None:
         db.rollback()
     finally:
         db.close()
+
+    # Broadcast to SSE subscribers. Failures are swallowed inside the
+    # helper, so a missing Redis here cannot kill the run.
+    from app.core import events
+
+    events.publish_progress_sync(
+        job_id, normalized_pct, normalized_stage, status="running"
+    )
 
 
 
@@ -722,6 +731,16 @@ def train_model(job_id: int) -> None:
             job.progress_pct = 100.0
             job.progress_stage = "Completed"
         db.commit()
+
+        # Publish the terminal event so any SSE listener closes cleanly.
+        from app.core import events
+
+        events.publish_progress_sync(
+            job.id,
+            job.progress_pct,
+            job.progress_stage,
+            status=job.status,
+        )
 
         if job.status == "completed":
             notification_service.notify_sync(

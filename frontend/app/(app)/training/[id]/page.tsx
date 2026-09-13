@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusPill } from "@/components/Pill";
 import {
+  getToken,
   getTrainingJob,
   predictWithTrainingJob,
   cancelTrainingJob,
@@ -87,15 +88,91 @@ export default function TrainingJobDetailPage() {
   useEffect(() => {
     if (Number.isNaN(jobId)) return;
     refresh();
-    const interval = setInterval(() => {
-      getTrainingJob(jobId).then((j) => {
-        setJob(j);
-        if (j.status === "completed" || j.status === "failed" || j.status === "cancelled") {
-          clearInterval(interval);
+
+    // Server-Sent Events via fetch + ReadableStream, because EventSource
+    // cannot send an Authorization header. One long-lived request replaces
+    // the previous 3-second polling interval entirely.
+    const controller = new AbortController();
+    let closed = false;
+
+    async function stream() {
+      const token = getToken();
+      if (!token) return;
+
+      const apiBase =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+      try {
+        const response = await fetch(
+          `${apiBase}/training-jobs/${jobId}/stream`,
+          {
+            headers: { Authorization: `Bearer ${token}`, Accept: "text/event-stream" },
+            signal: controller.signal,
+          },
+        );
+        if (!response.body) return;
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (!closed) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          // Frames are separated by a blank line.
+          let idx: number;
+          while ((idx = buffer.indexOf("\n\n")) !== -1) {
+            const frame = buffer.slice(0, idx);
+            buffer = buffer.slice(idx + 2);
+            handleSseFrame(frame);
+          }
         }
-      });
-    }, 3000);
-    return () => clearInterval(interval);
+      } catch (e) {
+        // Abort on unmount is expected - ignore AbortError.
+        if ((e as { name?: string }).name !== "AbortError") {
+          // Non-fatal: fall back to a single refresh so the page is not
+          // frozen if the stream breaks mid-flight.
+          getTrainingJob(jobId).then(setJob);
+        }
+      }
+    }
+
+    function handleSseFrame(raw: string) {
+      let eventName = "message";
+      const dataLines: string[] = [];
+      for (const line of raw.split("\n")) {
+        if (line.startsWith("event:")) eventName = line.slice(6).trim();
+        else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+      }
+      if (dataLines.length === 0) return;
+      const payload = JSON.parse(dataLines.join("\n"));
+
+      if (eventName === "end") {
+        // Terminal - refresh once for full metrics.
+        getTrainingJob(jobId).then(setJob);
+        return;
+      }
+
+      // Optimistic patch of the job's progress fields, without a full refetch.
+      setJob((prev) =>
+        prev
+          ? {
+              ...prev,
+              progress_pct: payload.pct ?? prev.progress_pct,
+              progress_stage: payload.stage ?? prev.progress_stage,
+              status: payload.status ?? prev.status,
+            }
+          : prev,
+      );
+    }
+
+    stream();
+    return () => {
+      closed = true;
+      controller.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
 

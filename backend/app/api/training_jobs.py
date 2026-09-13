@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from starlette.background import BackgroundTask
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from pathlib import Path
 from jose import jwt, JWTError
 import os
+import asyncio
+import json
 import re
 import tempfile
 import zipfile
@@ -69,6 +71,79 @@ def _verify_download_token(token: str, job_id: int) -> int:
             detail="Download token does not match this job.",
         )
     return int(payload["org"])
+
+
+@router.get("/{job_id}/stream")
+async def stream_training_progress(
+    job_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Server-Sent Events stream of training progress for a specific job.
+
+    First frame is a snapshot of the current state pulled from the DB
+    (so a client that opens the stream after the job started does not
+    wait for the next tick). Subsequent frames are pushed by the Celery
+    worker via Redis pub/sub.
+
+    Closes automatically once the job reaches a terminal status.
+    """
+    # Validate ownership and capture the initial snapshot.
+    service = TrainingService(db)
+    job = await service.get_job(job_id, current_user.org_id)
+
+    initial = {
+        "pct": job.progress_pct,
+        "stage": job.progress_stage,
+        "status": job.status,
+    }
+    terminal = {"completed", "failed", "cancelled"}
+
+    async def event_stream():
+        # Frame 1: current state.
+        yield f"data: {json.dumps(initial)}\n\n"
+
+        if initial["status"] in terminal:
+            yield f"event: end\ndata: {json.dumps({'status': initial['status']})}\n\n"
+            return
+
+        from app.core import events
+
+        # Heartbeat every 15s so proxies don't drop the connection.
+        try:
+            iterator = events.subscribe_progress(job_id).__aiter__()
+            while True:
+                try:
+                    payload = await asyncio.wait_for(
+                        iterator.__anext__(), timeout=15.0
+                    )
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+                    continue
+                except StopAsyncIteration:
+                    break
+
+                yield f"data: {json.dumps(payload)}\n\n"
+
+                if payload.get("status") in terminal:
+                    yield f"event: end\ndata: {json.dumps({'status': payload['status']})}\n\n"
+                    break
+        finally:
+            try:
+                await iterator.aclose()  # type: ignore[union-attr]
+            except Exception:  # noqa: BLE001
+                pass
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # disables nginx buffering
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @router.post("/", response_model=TrainingJobOut)
