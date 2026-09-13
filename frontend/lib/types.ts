@@ -250,3 +250,19 @@ export interface NotificationChannel {
   created_by?: number | null;
   created_at: string;
 }
+
+export type DeploymentStatus = "active" | "inactive" | "archived";
+
+export interface ModelDeployment {
+  id: number;
+  org_id: number;
+  training_job_id: number;
+  name: string;
+  version: number;
+  description?: string | null;
+  status: DeploymentStatus;
+  traffic_weight: number;
+  created_by?: number | null;
+  created_at: string;
+  updated_at?: string | null;
+}

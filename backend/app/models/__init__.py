@@ -14,6 +14,7 @@ from app.models.shadow_ai_sighting import ShadowAISighting
 from app.models.dataset import Dataset
 from app.models.training_job import TrainingJob
 from app.models.notification_channel import NotificationChannel
+from app.models.model_deployment import ModelDeployment
 
 __all__ = [
     "Organization",
@@ -34,4 +35,5 @@ __all__ = [
     "Dataset",
     "TrainingJob",
     "NotificationChannel",
+    "ModelDeployment",
 ]

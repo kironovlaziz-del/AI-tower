@@ -19,6 +19,7 @@ import type {
   TrainingTaskType,
   TrainingAlgorithm,
   AllowedModelsResponse,
+  ModelDeployment,
   NotificationChannel,
   NotificationChannelType,
   RiskLevel,
@@ -617,4 +618,54 @@ export async function fetchAlgorithms(taskType?: string) {
     { params: taskType ? { task_type: taskType } : undefined },
   );
   return data.algorithms;
+}
+
+// ---- Deployment Manager ----
+export async function listDeployments() {
+  const { data } = await api.get<Page<ModelDeployment>>("/deployments/");
+  return unwrap(data);
+}
+
+export async function createDeployment(payload: {
+  training_job_id: number;
+  name: string;
+  description?: string;
+  version?: number;
+  traffic_weight?: number;
+}) {
+  const { data } = await api.post<ModelDeployment>("/deployments/", payload);
+  return data;
+}
+
+export async function getDeployment(id: number) {
+  const { data } = await api.get<ModelDeployment>(`/deployments/${id}`);
+  return data;
+}
+
+export async function updateDeployment(
+  id: number,
+  payload: Partial<{
+    description: string;
+    status: "active" | "inactive" | "archived";
+    traffic_weight: number;
+  }>,
+) {
+  const { data } = await api.put<ModelDeployment>(`/deployments/${id}`, payload);
+  return data;
+}
+
+export async function deleteDeployment(id: number) {
+  await api.delete(`/deployments/${id}`);
+}
+
+export async function predictViaDeployment(
+  id: number,
+  features: Record<string, unknown>,
+) {
+  const { data } = await api.post<{
+    deployment_id: number;
+    version: number;
+    prediction: unknown;
+  }>(`/deployments/${id}/predict`, { features });
+  return data;
 }
