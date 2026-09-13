@@ -196,7 +196,7 @@ export default function TrainingPage() {
 
     if (p.type === "select" && p.options) {
       return (
-        <div className="field" key={p.name} style={{ minWidth: 200 }}>
+ <div key={p.name} className="field u-field-lg">
           <label htmlFor={`hp-${p.name}`}>{t(p.label_key)}</label>
           <select
             id={`hp-${p.name}`}
@@ -217,7 +217,7 @@ export default function TrainingPage() {
     }
 
     return (
-      <div className="field" key={p.name} style={{ minWidth: 160 }}>
+ <div key={p.name} className="field u-field-md">
         <label htmlFor={`hp-${p.name}`}>{t(p.label_key)}</label>
         <input
           id={`hp-${p.name}`}
@@ -251,7 +251,7 @@ export default function TrainingPage() {
       />
       <div className="content">
         {tabularDatasets.length === 0 && (
-          <p className="hint-text" style={{ marginBottom: 16 }}>
+          <p className="hint-text u-mb-16">
             {t("training.hint_no_datasets")}
           </p>
         )}
@@ -335,8 +335,8 @@ export default function TrainingPage() {
                     </div>
 
                     {hasHyperparams && (
-                      <div className="panel" style={{ marginTop: 8, marginBottom: 8 }}>
-                        <div className="panel-body" style={{ padding: 12 }}>
+                      <div className="panel u-mt-8 u-mb-8">
+                        <div className="panel-body u-panel-tight">
                           <button
                             type="button"
                             className="btn btn-sm"
@@ -347,8 +347,8 @@ export default function TrainingPage() {
                           </button>
 
                           {sklearnAdvanced && selectedAlgorithm && (
-                            <div style={{ marginTop: 12 }}>
-                              <p className="hint-text" style={{ marginBottom: 12 }}>
+                            <div className="u-mt-12">
+                              <p className="hint-text u-mb-12">
                                 {t("training.hyperparams_hint")}
                               </p>
                               <div className="form-row" style={{ flexWrap: "wrap" }}>
@@ -437,8 +437,8 @@ export default function TrainingPage() {
                       </div>
                     </div>
 
-                    <div className="panel" style={{ marginTop: 8, marginBottom: 8 }}>
-                      <div className="panel-body" style={{ padding: 12 }}>
+                    <div className="panel u-mt-8 u-mb-8">
+                      <div className="panel-body u-panel-tight">
                         <label
                           style={{
                             display: "flex",
@@ -455,12 +455,12 @@ export default function TrainingPage() {
                           />
                           <strong>{t("training.use_lora")}</strong>
                         </label>
-                        <p className="hint-text" style={{ marginTop: 6, marginLeft: 24 }}>
+                        <p className="hint-text u-check-hint">
                           {t("training.use_lora_hint")}
                         </p>
 
                         {useLora && (
-                          <div style={{ marginTop: 12, marginLeft: 24 }}>
+                          <div className="u-check-body">
                             <button
                               type="button"
                               className="btn btn-sm"
@@ -469,7 +469,7 @@ export default function TrainingPage() {
                               {loraAdvanced ? "▾" : "▸"} {t("training.lora_advanced")}
                             </button>
                             {loraAdvanced && (
-                              <div style={{ marginTop: 12 }}>
+                              <div className="u-mt-12">
                                 <div className="form-row">
                                   <div className="field">
                                     <label htmlFor="lora_r">{t("training.lora_r")}</label>

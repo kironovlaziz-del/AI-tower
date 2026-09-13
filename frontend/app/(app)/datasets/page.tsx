@@ -98,7 +98,7 @@ export default function DatasetsPage() {
       />
       <div className="content">
         {showForm && (
-          <div className="panel" style={{ marginBottom: 20 }}>
+          <div className="panel u-mb-20">
             <div className="panel-header">
               <h2>{t("datasets.form_title")}</h2>
             </div>

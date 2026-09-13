@@ -166,7 +166,7 @@ export default function RequestDetailPage() {
                   value={editText}
                   onChange={(e) => setEditText(e.target.value)}
                 />
-                <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+                <div className="u-btn-row u-mt-8">
                   <button
                     className="btn btn-primary btn-sm"
                     onClick={handleSaveEdit}
@@ -193,7 +193,7 @@ export default function RequestDetailPage() {
             {request.firewall_flags && request.firewall_flags.length > 0 && (
               <>
                 <div className="section-title">{t("requests.detail.flags_section")}</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <div className="u-btn-row">
                   {request.firewall_flags.map((flag) => (
                     <span
                       key={flag}
@@ -238,7 +238,7 @@ export default function RequestDetailPage() {
               <h2>{t("requests.detail.approval_section")}</h2>
             </div>
             <div className="panel-body">
-              <p className="hint-text" style={{ marginBottom: 12 }}>
+              <p className="hint-text u-mb-12">
                 {t("requests.detail.approval_hint")}
               </p>
               <button
@@ -288,11 +288,11 @@ export default function RequestDetailPage() {
           </div>
           <div className="panel-body">
             {!canStopOrEdit && !canRollback && (
-              <p className="hint-text" style={{ marginBottom: 12 }}>
+              <p className="hint-text u-mb-12">
                 {t("requests.detail.override_no_actions", { status: request.status })}
               </p>
             )}
-            <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+            <div className="u-btn-row u-mb-16">
               {canStopOrEdit && (
                 <button className="btn btn-danger btn-sm" onClick={handleStop} disabled={overrideBusy}>
                   {t("requests.detail.stop")}

@@ -767,3 +767,67 @@ tbody tr.clickable:hover {
   color: var(--text-muted);
   margin-bottom: 4px;
 }
+
+/* ---------- utility classes (replace frequent inline styles) ---------- */
+
+/* flex helpers */
+.u-flex        { display: flex; }
+.u-flex-col    { display: flex; flex-direction: column; }
+.u-flex-wrap   { flex-wrap: wrap; }
+.u-items-start { align-items: flex-start; }
+.u-items-center{ align-items: center; }
+.u-justify-between { justify-content: space-between; }
+.u-justify-center  { justify-content: center; }
+.u-gap-4       { gap: 4px; }
+.u-gap-6       { gap: 6px; }
+.u-gap-8       { gap: 8px; }
+.u-gap-12      { gap: 12px; }
+.u-gap-16      { gap: 16px; }
+
+/* margins */
+.u-mt-4        { margin-top: 4px; }
+.u-mt-8        { margin-top: 8px; }
+.u-mt-12       { margin-top: 12px; }
+.u-mt-16       { margin-top: 16px; }
+.u-mb-8        { margin-bottom: 8px; }
+.u-mb-12       { margin-bottom: 12px; }
+.u-mb-16       { margin-bottom: 16px; }
+.u-mb-20       { margin-bottom: 20px; }
+
+/* layout shortcuts */
+.u-row-tight   { display: flex; gap: 8px; flex-wrap: wrap; }
+.u-nowrap      { white-space: nowrap; }
+.u-mono        { font-family: var(--font-geist-mono), monospace; }
+.u-truncate    { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.u-full-width  { width: 100%; }
+
+/* panels */
+.u-panel-tight { padding: 12px; }
+.u-section-card{
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin: 8px 0;
+}
+
+/* form field with min widths */
+.u-field-sm    { min-width: 140px; }
+.u-field-md    { min-width: 160px; }
+.u-field-lg    { min-width: 200px; }
+.u-field-260   { max-width: 260px; }
+.u-field-220   { max-width: 220px; }
+
+/* button row */
+.u-btn-row     { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* checkbox label (used in notifications and LoRA) */
+.u-check-row   { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.u-check-hint  { margin-top: 6px; margin-left: 24px; }
+.u-check-body  { margin-top: 12px; margin-left: 24px; }
+
+/* tabs with expand arrow */
+.u-expander    { display: inline-flex; align-items: center; gap: 4px; }
+
+/* secondary row background (e.g. expanded test panel) */
+.u-row-secondary { background: #fafbfc; }

@@ -111,7 +111,7 @@ export default function NotificationsPage() {
         }
       />
       <div className="content">
-        <p className="hint-text" style={{ marginBottom: 16 }}>
+        <p className="hint-text u-mb-16">
           {t("notifications.hint")}
         </p>
 
@@ -155,11 +155,11 @@ export default function NotificationsPage() {
                 </div>
                 <div className="field">
                   <label>{t("notifications.events")}</label>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div className="u-flex-col u-gap-6">
                     {eventTypes.map((ev) => (
                       <label
                         key={ev}
-                        style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}
+                        className="u-check-row"
                       >
                         <input
                           type="checkbox"
@@ -209,7 +209,7 @@ export default function NotificationsPage() {
                 <tr key={ch.id}>
                   <td className="mono">{ch.channel_type}</td>
                   <td className="mono">{ch.target}</td>
-                  <td style={{ maxWidth: 280 }}>
+                  <td className="u-field-260">
                     {ch.events_json
                       .map((ev) => t(`notifications.events_map.${ev}`, ev))
                       .join(", ")}
@@ -219,8 +219,8 @@ export default function NotificationsPage() {
                       {ch.enabled ? t("notifications.enabled") : t("notifications.disabled")}
                     </span>
                   </td>
-                  <td style={{ whiteSpace: "nowrap" }}>
-                    <div style={{ display: "flex", gap: 6 }}>
+                  <td className="u-nowrap">
+                    <div className="u-btn-row">
                       <button
                         className="btn btn-sm"
                         disabled={busyId === ch.id}

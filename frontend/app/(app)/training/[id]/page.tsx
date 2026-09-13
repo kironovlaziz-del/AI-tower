@@ -281,7 +281,7 @@ export default function TrainingJobDetailPage() {
                   </div>
                 </>
               )}
-              <p className="hint-text" style={{ marginTop: 12, marginBottom: 12 }}>
+              <p className="hint-text u-mt-12 u-mb-12">
                 {t("training.detail.running_hint")}
               </p>
               {lifecycleError && <p className="error-text">{lifecycleError}</p>}
@@ -307,7 +307,7 @@ export default function TrainingJobDetailPage() {
               >
                 {lifecycleBusy ? t("training.detail.retrying") : t("training.detail.retry")}
               </button>
-              <span className="hint-text" style={{ marginLeft: 12 }}>
+              <span className="hint-text u-mt-4" style={{ marginLeft: 12 }}>
                 {t("training.detail.retry_hint")}
               </span>
             </div>
@@ -346,7 +346,7 @@ export default function TrainingJobDetailPage() {
                   ))}
               </dl>
               {Array.isArray((job.metrics_json as Record<string, unknown>)?.warnings) && (
-                <div style={{ marginTop: 12 }}>
+                <div className="u-mt-12">
                   {((job.metrics_json as Record<string, unknown>).warnings as string[]).map(
                     (w: string, i: number) => (
                       <p key={i} className="hint-text" style={{ marginBottom: 6 }}>
@@ -357,7 +357,7 @@ export default function TrainingJobDetailPage() {
                 </div>
               )}
               {isGeneration && (
-                <p className="hint-text" style={{ marginTop: 8 }}>
+                <p className="hint-text u-mt-8">
                   {t("training.detail.metrics_generation_hint")}
                 </p>
               )}
@@ -463,7 +463,7 @@ export default function TrainingJobDetailPage() {
                     : t("training.detail.predict_submit_classification")}
                 </button>
                 {prediction !== undefined && (
-                  <div className="text-block" style={{ marginTop: 12 }}>
+                  <div className="text-block u-mt-12">
                     {isGeneration ? (
                       String(prediction)
                     ) : (

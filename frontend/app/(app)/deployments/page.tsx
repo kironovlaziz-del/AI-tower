@@ -119,7 +119,7 @@ export default function DeploymentsPage() {
       />
       <div className="content">
         {jobs.length === 0 && (
-          <p className="hint-text" style={{ marginBottom: 16 }}>
+          <p className="hint-text u-mb-16">
             {t("deployments.no_completed_jobs")}
           </p>
         )}
@@ -217,8 +217,8 @@ export default function DeploymentsPage() {
                     <td className="mono">
                       {new Date(d.created_at).toLocaleString(i18n.language)}
                     </td>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      <div style={{ display: "flex", gap: 6 }}>
+                    <td className="u-nowrap">
+                      <div className="u-btn-row">
                         <button
                           className="btn btn-sm"
                           disabled={busyId === d.id}
@@ -245,10 +245,10 @@ export default function DeploymentsPage() {
                   </tr>
                   {testOpenId === d.id && (
                     <tr>
-                      <td colSpan={7} style={{ background: "#fafbfc" }}>
-                        <div style={{ padding: 12 }}>
+                      <td colSpan={7} className="u-row-secondary">
+                        <div className="u-panel-tight">
                           <strong>{t("deployments.test_title")}</strong>
-                          <form onSubmit={handleTest} style={{ marginTop: 8 }}>
+                          <form onSubmit={handleTest} className="u-mt-8">
                             <div className="field">
                               <label htmlFor={`test-${d.id}`}>
                                 {t("deployments.test_text")}
