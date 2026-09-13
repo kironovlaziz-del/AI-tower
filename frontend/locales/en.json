@@ -695,7 +695,10 @@
       "shadow_ai_reported": "Shadow AI detected",
       "request_blocked": "Request blocked by Prompt Firewall",
       "training_completed": "Model training completed",
-      "training_failed": "Model training failed"
+      "training_failed": "Model training failed",
+      "deployment_created": "Deployment created",
+      "deployment_updated": "Deployment updated",
+      "deployment_archived": "Deployment archived"
     }
   },
   "users": {

@@ -15,6 +15,7 @@ from app.schemas.deployment import (
     DeploymentChatResponse,
 )
 from app.services.deployment_service import DeploymentService
+from app.services import notification_service
 from app.services.audit_service import AuditService
 from app.models.user import User, UserRole
 from app.api.deps import get_current_user, require_role
@@ -35,6 +36,20 @@ async def create_deployment(
     await AuditService(db).log(
         current_user.org_id, current_user.id, "deployment", dep.id, "created",
         {"name": dep.name, "version": dep.version, "training_job_id": dep.training_job_id},
+    )
+    await notification_service.notify(
+        db,
+        current_user.org_id,
+        "deployment_created",
+        f"Deployment '{dep.name}' v{dep.version} created",
+        f"Training job #{dep.training_job_id} is now live as '{dep.name}' v{dep.version}.",
+        {
+            "deployment_id": dep.id,
+            "name": dep.name,
+            "version": dep.version,
+            "training_job_id": dep.training_job_id,
+            "traffic_weight": dep.traffic_weight,
+        },
     )
     return dep
 
@@ -79,6 +94,21 @@ async def update_deployment(
         current_user.org_id, current_user.id, "deployment", dep.id, "updated",
         data.model_dump(exclude_unset=True),
     )
+    await notification_service.notify(
+        db,
+        current_user.org_id,
+        "deployment_updated",
+        f"Deployment '{dep.name}' v{dep.version} updated",
+        f"Changes: {data.model_dump(exclude_unset=True)}",
+        {
+            "deployment_id": dep.id,
+            "name": dep.name,
+            "version": dep.version,
+            "changes": data.model_dump(exclude_unset=True),
+            "status": dep.status,
+            "traffic_weight": dep.traffic_weight,
+        },
+    )
     return dep
 
 
@@ -93,6 +123,14 @@ async def delete_deployment(
     await AuditService(db).log(
         current_user.org_id, current_user.id, "deployment", deployment_id,
         "archived", None,
+    )
+    await notification_service.notify(
+        db,
+        current_user.org_id,
+        "deployment_archived",
+        f"Deployment #{deployment_id} archived",
+        "This deployment is no longer served and cannot accept traffic.",
+        {"deployment_id": deployment_id},
     )
     return {"status": "archived"}
 

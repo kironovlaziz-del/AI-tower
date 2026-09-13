@@ -695,7 +695,10 @@
       "shadow_ai_reported": "Shadow AI aniqlandi",
       "request_blocked": "So'rov Prompt Firewall tomonidan bloklandi",
       "training_completed": "Model o'qitish yakunlandi",
-      "training_failed": "Model o'qitish muvaffaqiyatsiz"
+      "training_failed": "Model o'qitish muvaffaqiyatsiz",
+      "deployment_created": "Deployment yaratildi",
+      "deployment_updated": "Deployment yangilandi",
+      "deployment_archived": "Deployment arxivlandi"
     }
   },
   "users": {
