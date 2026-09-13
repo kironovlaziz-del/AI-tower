@@ -11,7 +11,7 @@ from app.core.celery_app import celery_app
 from app.models.dataset import Dataset
 from app.models.training_job import TrainingJob
 from app.schemas.training_job import TrainingJobCreate
-from app.services import compute_detector, transformer_models
+from app.services import compute_detector, ml_algorithms, transformer_models
 
 SUPPORTED_DATASET_FORMATS = {"csv", "tsv"}
 TRANSFORMER_TASK_TYPES = {"transformer_text_classification", "transformer_text_generation"}
@@ -203,17 +203,14 @@ class TrainingService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="target_column is required for tabular training tasks.",
                 )
-            is_classification = data.task_type == "tabular_classification"
-            is_classifier_algo = data.algorithm in (
-                "logistic_regression",
-                "random_forest_classifier",
-            )
             if not data.algorithm:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="algorithm is required for tabular training tasks.",
                 )
-            if is_classification != is_classifier_algo:
+            # Validity of the (algorithm, task_type) pair is defined by the
+            # algorithm registry, not hardcoded here - see ml_algorithms.py.
+            if not ml_algorithms.is_valid_for_task(data.algorithm, data.task_type):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Algorithm '{data.algorithm}' does not match task_type '{data.task_type}'.",

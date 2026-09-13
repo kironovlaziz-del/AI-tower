@@ -430,7 +430,9 @@ export async function createTrainingJob(payload: {
   name: string;
   task_type: TrainingTaskType;
   target_column?: string;
-  algorithm?: TrainingAlgorithm;
+  // Algorithm ids now come from the backend registry (fetchAlgorithms),
+  // so this is a plain string rather than a hardcoded union type.
+  algorithm?: string;
   base_model?: string;
   hyperparameters?: Record<string, unknown>;
 }) {
@@ -527,4 +529,30 @@ export async function deleteNotificationChannel(id: number) {
 
 export async function testNotificationChannel(id: number) {
   await api.post(`/notification-channels/${id}/test`);
+}
+
+// ---- Training algorithms registry ----
+export interface AlgorithmHyperparam {
+  name: string;
+  label_key: string;
+  type: "int" | "float" | "select";
+  default: number | string | null;
+  min?: number;
+  max?: number;
+  options?: { value: string; label_key: string }[];
+}
+
+export interface AlgorithmInfo {
+  id: string;
+  label_key: string;
+  task_types: string[];
+  hyperparameters: AlgorithmHyperparam[];
+}
+
+export async function fetchAlgorithms(taskType?: string) {
+  const { data } = await api.get<{ algorithms: AlgorithmInfo[] }>(
+    "/training-jobs/algorithms",
+    { params: taskType ? { task_type: taskType } : undefined },
+  );
+  return data.algorithms;
 }

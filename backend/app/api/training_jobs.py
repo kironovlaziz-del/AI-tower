@@ -19,6 +19,7 @@ from app.schemas.training_job import (
     PredictRequest,
     PredictResponse,
 )
+from app.services import ml_algorithms
 from app.services.training_service import TrainingService
 from app.services.audit_service import AuditService
 from app.models.user import User
@@ -26,6 +27,17 @@ from app.models.training_job import TrainingJob
 from app.api.deps import get_current_user
 
 router = APIRouter()
+
+@router.get("/algorithms")
+async def list_algorithms(task_type: str | None = None):
+    """
+    Registry of sklearn algorithms available for the Training Service.
+    The frontend uses this to render the algorithm dropdown and the
+    hyperparameter form dynamically, so adding a new algorithm on the
+    backend does not require a frontend rebuild.
+    """
+    return {"algorithms": ml_algorithms.list_algorithms(task_type)}
+
 
 # Short-lived token used for <a href> downloads - an <a> tag cannot send
 # an Authorization header, so we sign a one-shot URL instead.

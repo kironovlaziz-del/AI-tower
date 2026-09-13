@@ -8,66 +8,19 @@ import { Form } from "@/components/Form";
 import { StatusPill } from "@/components/Pill";
 import {
   createTrainingJob,
+  fetchAlgorithms,
   getAllowedModels,
   listDatasets,
   listTrainingJobs,
+  type AlgorithmHyperparam,
+  type AlgorithmInfo,
 } from "@/lib/api";
 import type {
   AllowedModelsResponse,
   Dataset,
-  TrainingAlgorithm,
   TrainingJob,
   TrainingTaskType,
 } from "@/lib/types";
-
-const SKLEARN_ALGORITHMS_BY_TASK: Record<
-  "tabular_classification" | "tabular_regression",
-  { value: TrainingAlgorithm; labelKey: string }[]
-> = {
-  tabular_classification: [
-    { value: "logistic_regression", labelKey: "training.algorithms.logistic_regression" },
-    { value: "random_forest_classifier", labelKey: "training.algorithms.random_forest_classifier" },
-  ],
-  tabular_regression: [
-    { value: "linear_regression", labelKey: "training.algorithms.linear_regression" },
-    { value: "random_forest_regressor", labelKey: "training.algorithms.random_forest_regressor" },
-  ],
-};
-
-/** Which hyperparameter fields are relevant for each sklearn algorithm. */
-type HyperparamFlags = {
-  max_iter: boolean;
-  n_estimators: boolean;
-  max_depth: boolean;
-  class_weight: boolean;
-};
-
-const ALGORITHM_HYPERPARAMS: Record<TrainingAlgorithm, HyperparamFlags> = {
-  logistic_regression: {
-    max_iter: true,
-    n_estimators: false,
-    max_depth: false,
-    class_weight: true,
-  },
-  random_forest_classifier: {
-    max_iter: false,
-    n_estimators: true,
-    max_depth: true,
-    class_weight: true,
-  },
-  linear_regression: {
-    max_iter: false,
-    n_estimators: false,
-    max_depth: false,
-    class_weight: false,
-  },
-  random_forest_regressor: {
-    max_iter: false,
-    n_estimators: true,
-    max_depth: true,
-    class_weight: false,
-  },
-};
 
 export default function TrainingPage() {
   const router = useRouter();
@@ -75,13 +28,14 @@ export default function TrainingPage() {
   const [jobs, setJobs] = useState<TrainingJob[]>([]);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [allowedModels, setAllowedModels] = useState<AllowedModelsResponse | null>(null);
+  const [algorithms, setAlgorithms] = useState<AlgorithmInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
   const [name, setName] = useState("");
   const [datasetId, setDatasetId] = useState<number | "">("");
   const [taskType, setTaskType] = useState<TrainingTaskType>("tabular_classification");
-  const [algorithm, setAlgorithm] = useState<TrainingAlgorithm>("logistic_regression");
+  const [algorithm, setAlgorithm] = useState<string>("");
   const [targetColumn, setTargetColumn] = useState("");
   const [textColumn, setTextColumn] = useState("");
   const [baseModel, setBaseModel] = useState("");
@@ -90,13 +44,11 @@ export default function TrainingPage() {
   const [batchSize, setBatchSize] = useState(8);
   const [maxLength, setMaxLength] = useState(128);
 
-  // sklearn hyperparameters
-  const [maxIter, setMaxIter] = useState<string>("");
-  const [nEstimators, setNEstimators] = useState<string>("");
-  const [maxDepth, setMaxDepth] = useState<string>("");
-  const [classWeight, setClassWeight] = useState<string>(""); // "" | "balanced" | "none"
+  // Dynamic hyperparameter values, keyed by param.name (string | number | "")
+  const [hypervalues, setHypervalues] = useState<Record<string, string>>({});
+  const [sklearnAdvanced, setSklearnAdvanced] = useState(false);
 
-  // LoRA controls
+  // LoRA
   const [useLora, setUseLora] = useState(false);
   const [loraAdvanced, setLoraAdvanced] = useState(false);
   const [loraR, setLoraR] = useState(8);
@@ -104,16 +56,16 @@ export default function TrainingPage() {
   const [loraDropout, setLoraDropout] = useState(0.05);
   const [loraTargets, setLoraTargets] = useState("");
 
-  const [sklearnAdvanced, setSklearnAdvanced] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const isTransformerClassification = taskType === "transformer_text_classification";
   const isGeneration = taskType === "transformer_text_generation";
   const isTransformer = isTransformerClassification || isGeneration;
-  const isClassification = taskType === "tabular_classification";
-  const hyperflags = ALGORITHM_HYPERPARAMS[algorithm];
+
+  const selectedAlgorithm = algorithms.find((a) => a.id === algorithm);
+  const hasHyperparams =
+    !!selectedAlgorithm && selectedAlgorithm.hyperparameters.length > 0;
 
   function refreshLists() {
     setLoading(true);
@@ -127,6 +79,7 @@ export default function TrainingPage() {
 
   useEffect(refreshLists, []);
 
+  // Load allowed transformer models when the task type is transformer-based.
   useEffect(() => {
     if (!isTransformer) return;
     getAllowedModels(taskType).then((m) => {
@@ -136,12 +89,30 @@ export default function TrainingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskType]);
 
-  function handleTaskTypeChange(next: TrainingTaskType) {
-    setTaskType(next);
-    if (next === "tabular_classification" || next === "tabular_regression") {
-      setAlgorithm(SKLEARN_ALGORITHMS_BY_TASK[next][0].value);
-      setUseLora(false);
-    }
+  // Load sklearn algorithms from the backend registry whenever the task
+  // type is a tabular one. The frontend no longer hardcodes the list, so
+  // adding an algorithm on the backend requires no rebuild here.
+  useEffect(() => {
+    if (isTransformer) return;
+    fetchAlgorithms(taskType).then((list) => {
+      setAlgorithms(list);
+      // Reset selection + hyperparameter values to the first available
+      // algorithm for this task type.
+      if (list.length > 0) {
+        setAlgorithm(list[0].id);
+        setHypervalues({});
+      } else {
+        setAlgorithm("");
+        setHypervalues({});
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskType]);
+
+  function handleAlgorithmChange(next: string) {
+    setAlgorithm(next);
+    // Clear values so nothing stale from the previous algorithm is sent.
+    setHypervalues({});
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -174,15 +145,16 @@ export default function TrainingPage() {
           if (targets.length > 0) hp.lora_target_modules = targets;
         }
       } else {
-        // sklearn track - only send fields the user actually filled in, so
-        // the backend can fall back to library defaults for the rest.
-        if (hyperflags.max_iter && maxIter !== "") hp.max_iter = Number(maxIter);
-        if (hyperflags.n_estimators && nEstimators !== "")
-          hp.n_estimators = Number(nEstimators);
-        if (hyperflags.max_depth && maxDepth !== "")
-          hp.max_depth = Number(maxDepth);
-        if (hyperflags.class_weight && classWeight !== "") {
-          hp.class_weight = classWeight === "none" ? null : classWeight;
+        // Copy any hyperparameter values the user set, coercing by type.
+        // Empty strings are omitted so the backend falls back to defaults.
+        if (selectedAlgorithm) {
+          for (const p of selectedAlgorithm.hyperparameters) {
+            const raw = hypervalues[p.name];
+            if (raw === undefined || raw === "") continue;
+            if (p.type === "int") hp[p.name] = parseInt(raw, 10);
+            else if (p.type === "float") hp[p.name] = parseFloat(raw);
+            else hp[p.name] = raw; // select
+          }
         }
       }
 
@@ -200,13 +172,10 @@ export default function TrainingPage() {
       setTargetColumn("");
       setTextColumn("");
       setCustomModel("");
-      setMaxIter("");
-      setNEstimators("");
-      setMaxDepth("");
-      setClassWeight("");
+      setHypervalues({});
+      setSklearnAdvanced(false);
       setUseLora(false);
       setLoraAdvanced(false);
-      setSklearnAdvanced(false);
       router.push(`/training/${job.id}`);
     } catch (err: unknown) {
       const detail =
@@ -221,6 +190,50 @@ export default function TrainingPage() {
   const tabularDatasets = datasets.filter(
     (d) => d.file_format === "csv" || d.file_format === "tsv"
   );
+
+  function renderHyperparamField(p: AlgorithmHyperparam) {
+    const value = hypervalues[p.name] ?? "";
+
+    if (p.type === "select" && p.options) {
+      return (
+        <div className="field" key={p.name} style={{ minWidth: 200 }}>
+          <label htmlFor={`hp-${p.name}`}>{t(p.label_key)}</label>
+          <select
+            id={`hp-${p.name}`}
+            value={value}
+            onChange={(e) =>
+              setHypervalues((v) => ({ ...v, [p.name]: e.target.value }))
+            }
+          >
+            <option value="">—</option>
+            {p.options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {t(o.label_key)}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+
+    return (
+      <div className="field" key={p.name} style={{ minWidth: 160 }}>
+        <label htmlFor={`hp-${p.name}`}>{t(p.label_key)}</label>
+        <input
+          id={`hp-${p.name}`}
+          type="number"
+          step={p.type === "float" ? "any" : 1}
+          min={p.min}
+          max={p.max}
+          value={value}
+          onChange={(e) =>
+            setHypervalues((v) => ({ ...v, [p.name]: e.target.value }))
+          }
+          placeholder={p.default != null ? String(p.default) : ""}
+        />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -284,7 +297,7 @@ export default function TrainingPage() {
                   <select
                     id="task_type"
                     value={taskType}
-                    onChange={(e) => handleTaskTypeChange(e.target.value as TrainingTaskType)}
+                    onChange={(e) => setTaskType(e.target.value as TrainingTaskType)}
                   >
                     <option value="tabular_classification">
                       {t("training.task_types.tabular_classification")}
@@ -308,22 +321,20 @@ export default function TrainingPage() {
                       <select
                         id="algorithm"
                         value={algorithm}
-                        onChange={(e) => setAlgorithm(e.target.value as TrainingAlgorithm)}
+                        onChange={(e) => handleAlgorithmChange(e.target.value)}
                       >
-                        {SKLEARN_ALGORITHMS_BY_TASK[
-                          taskType as "tabular_classification" | "tabular_regression"
-                        ].map((a) => (
-                          <option key={a.value} value={a.value}>
-                            {t(a.labelKey)}
+                        {algorithms.length === 0 && (
+                          <option value="">—</option>
+                        )}
+                        {algorithms.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {t(a.label_key)}
                           </option>
                         ))}
                       </select>
                     </div>
 
-                    {(hyperflags.max_iter ||
-                      hyperflags.n_estimators ||
-                      hyperflags.max_depth ||
-                      hyperflags.class_weight) && (
+                    {hasHyperparams && (
                       <div className="panel" style={{ marginTop: 8, marginBottom: 8 }}>
                         <div className="panel-body" style={{ padding: 12 }}>
                           <button
@@ -335,85 +346,14 @@ export default function TrainingPage() {
                             {t("training.hyperparams_title")}
                           </button>
 
-                          {sklearnAdvanced && (
+                          {sklearnAdvanced && selectedAlgorithm && (
                             <div style={{ marginTop: 12 }}>
                               <p className="hint-text" style={{ marginBottom: 12 }}>
                                 {t("training.hyperparams_hint")}
                               </p>
-
-                              <div className="form-row">
-                                {hyperflags.max_iter && (
-                                  <div className="field">
-                                    <label htmlFor="max_iter">
-                                      {t("training.max_iter")}
-                                    </label>
-                                    <input
-                                      id="max_iter"
-                                      type="number"
-                                      min={1}
-                                      max={100000}
-                                      value={maxIter}
-                                      onChange={(e) => setMaxIter(e.target.value)}
-                                      placeholder="1000"
-                                    />
-                                  </div>
-                                )}
-                                {hyperflags.n_estimators && (
-                                  <div className="field">
-                                    <label htmlFor="n_estimators">
-                                      {t("training.n_estimators")}
-                                    </label>
-                                    <input
-                                      id="n_estimators"
-                                      type="number"
-                                      min={1}
-                                      max={1000}
-                                      value={nEstimators}
-                                      onChange={(e) => setNEstimators(e.target.value)}
-                                      placeholder="100"
-                                    />
-                                  </div>
-                                )}
-                                {hyperflags.max_depth && (
-                                  <div className="field">
-                                    <label htmlFor="max_depth">
-                                      {t("training.max_depth")}
-                                    </label>
-                                    <input
-                                      id="max_depth"
-                                      type="number"
-                                      min={1}
-                                      max={100}
-                                      value={maxDepth}
-                                      onChange={(e) => setMaxDepth(e.target.value)}
-                                      placeholder=""
-                                    />
-                                  </div>
-                                )}
+                              <div className="form-row" style={{ flexWrap: "wrap" }}>
+                                {selectedAlgorithm.hyperparameters.map(renderHyperparamField)}
                               </div>
-
-                              {hyperflags.class_weight && (
-                                <div className="field" style={{ maxWidth: 260 }}>
-                                  <label htmlFor="class_weight">
-                                    {t("training.class_weight")}
-                                  </label>
-                                  <select
-                                    id="class_weight"
-                                    value={classWeight}
-                                    onChange={(e) => setClassWeight(e.target.value)}
-                                  >
-                                    <option value="">
-                                      (default — balanced)
-                                    </option>
-                                    <option value="balanced">
-                                      {t("training.class_weight_balanced")}
-                                    </option>
-                                    <option value="none">
-                                      {t("training.class_weight_none")}
-                                    </option>
-                                  </select>
-                                </div>
-                              )}
                             </div>
                           )}
                         </div>
