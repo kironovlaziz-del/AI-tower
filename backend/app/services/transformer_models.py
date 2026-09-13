@@ -18,9 +18,9 @@ from typing import Any, Dict, List, Optional
 # modest batch size (~8) and sequence length (~256) in fp32.
 CPU_SAFE_MODELS: List[Dict[str, Any]] = [
     {
-        "id": "prajjwal1/bert-tiny",
-        "label": "BERT-Tiny (~4M параметров)",
-        "note": "Самый быстрый вариант на CPU - минуты, а не часы, на небольших датасетах.",
+        "id": "google/bert_uncased_L-2_H-128_A-2",
+        "label": "BERT-Tiny Google (~4M параметров)",
+        "note": "Самый быстрый вариант на CPU - минуты, а не часы, на небольших датасетах. Официальный релиз Google с полным набором файлов токенизатора.",
         "estimated_vram_gb": 0.3,
     },
     {
@@ -113,14 +113,25 @@ def allowed_models(
 
 
 def check_model_fit(
-    model_id: str, gpu_available: bool, gpu_vram_free_gb: Optional[float] = None
+    model_id: str,
+    task_type: str,
+    gpu_available: bool,
+    gpu_vram_free_gb: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
-    Validates a specific model choice against detected hardware.
-    Returns {"allowed": bool, "reason": str|None}.
+    Validates a specific model choice against detected hardware and the
+    requested task type. Returns {"allowed": bool, "reason": str|None}.
+
+    The task type determines which curated list is authoritative: a model
+    that exists in GENERATION_MODELS is not valid for classification, and
+    vice versa.
     """
-    all_curated = CPU_SAFE_MODELS + GPU_ADDITIONAL_MODELS + GENERATION_MODELS
-    match = next((m for m in all_curated if m["id"] == model_id), None)
+    if task_type == "transformer_text_generation":
+        candidates = list(GENERATION_MODELS)
+    else:
+        candidates = CPU_SAFE_MODELS + GPU_ADDITIONAL_MODELS
+
+    match = next((m for m in candidates if m["id"] == model_id), None)
 
     if match is None:
         # Not in the curated list: only trust a free-form model id if a GPU

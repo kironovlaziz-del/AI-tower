@@ -17,17 +17,28 @@ from app.services import notification_service
 
 def _update_progress(job_id: int, pct: float, stage: str) -> None:
     """
-    Write progress to the training_jobs row using its own short-lived
-    session, so the transformers callback does not need to hold onto the
-    main worker session.
+    Write progress to the training_jobs row.
+
+    Uses a direct UPDATE on exactly two columns instead of loading the row
+    through the ORM. The earlier ORM version caused a race: the main
+    worker session holds its own snapshot of the job, and a flush after a
+    progress update could write stale status / finished_at back over the
+    newer values. An UPDATE that only touches progress_pct and
+    progress_stage is safe to run from any session at any time.
     """
+    from sqlalchemy import update
+
     db = SyncSessionLocal()
     try:
-        job = db.get(TrainingJob, job_id)
-        if job:
-            job.progress_pct = max(0.0, min(round(pct, 2), 100.0))
-            job.progress_stage = stage[:255] if stage else None
-            db.commit()
+        db.execute(
+            update(TrainingJob)
+            .where(TrainingJob.id == job_id)
+            .values(
+                progress_pct=max(0.0, min(round(pct, 2), 100.0)),
+                progress_stage=stage[:255] if stage else None,
+            )
+        )
+        db.commit()
     except Exception:  # noqa: BLE001 - progress reporting must not fail the job
         db.rollback()
     finally:
@@ -324,7 +335,11 @@ def _run_transformer_training(job: "TrainingJob", dataset: "Dataset") -> None:
 
     _update_progress(job.id, 10.0, "Tokenizing")
 
-    tokenizer = AutoTokenizer.from_pretrained(job.base_model)
+    # use_fast=False: some published repos (e.g. prajjwal1/bert-tiny) ship
+    # only vocab.txt without tokenizer.json/tokenizer_config.json, and
+    # the fast-tokenizer auto-detection fails on them in recent
+    # transformers versions.
+    tokenizer = AutoTokenizer.from_pretrained(job.base_model, use_fast=False)
     max_length = int(hyperparameters.get("max_length", 256))
     train_encodings = tokenizer(
         train_texts, truncation=True, padding=True, max_length=max_length
@@ -508,7 +523,11 @@ def _run_generation_training(job: "TrainingJob", dataset: "Dataset") -> None:
 
     _update_progress(job.id, 10.0, "Tokenizing")
 
-    tokenizer = AutoTokenizer.from_pretrained(job.base_model)
+    # use_fast=False: some published repos (e.g. prajjwal1/bert-tiny) ship
+    # only vocab.txt without tokenizer.json/tokenizer_config.json, and
+    # the fast-tokenizer auto-detection fails on them in recent
+    # transformers versions.
+    tokenizer = AutoTokenizer.from_pretrained(job.base_model, use_fast=False)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -682,10 +701,20 @@ def train_model(job_id: int) -> None:
             job.progress_stage = "Failed"
 
         # Race guard: the API may have marked this job cancelled while we
-        # were training. Reload and do not overwrite a cancellation with
-        # our own final status.
-        db.refresh(job)
-        if job.status == "cancelled":
+        # were training. Do NOT call db.refresh(job) here - it would sync
+        # the in-memory object with the DB row, discarding any in-flight
+        # changes (including the "failed" status and error_message we just
+        # set above). Query the current status with a separate SELECT
+        # instead, leaving the pending changes on `job` untouched.
+        from sqlalchemy import select
+
+        current_status = db.execute(
+            select(TrainingJob.status).where(TrainingJob.id == job.id)
+        ).scalar()
+
+        if current_status == "cancelled":
+            # The API already set the final status; drop our changes.
+            db.rollback()
             return
 
         job.finished_at = datetime.now(timezone.utc)
