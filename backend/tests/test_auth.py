@@ -31,7 +31,9 @@ async def test_login_wrong_password(client, org_and_users):
         },
     )
     assert resp.status_code == 401
-    assert "Incorrect" in resp.json()["detail"]
+    # Errors are stable machine-readable codes (see core/errors.py), not
+    # localized English strings - the frontend does the i18n translation.
+    assert resp.json()["detail"] == "auth.invalid_credentials"
 
 
 async def test_login_wrong_org_slug(client, org_and_users):
@@ -44,8 +46,8 @@ async def test_login_wrong_org_slug(client, org_and_users):
         },
     )
     assert resp.status_code == 401
-    # Generic message so we do not leak which orgs exist.
-    assert "Incorrect" in resp.json()["detail"]
+    # Generic code so we do not leak which orgs exist.
+    assert resp.json()["detail"] == "auth.invalid_credentials"
 
 
 async def test_login_disabled_user(client, org_and_users, admin_token):
@@ -66,7 +68,10 @@ async def test_login_disabled_user(client, org_and_users, admin_token):
         },
     )
     assert resp.status_code == 403
-    assert "disabled" in resp.json()["detail"]
+    # With context, api_error() wraps the code in {"code", "context"}.
+    detail = resp.json()["detail"]
+    assert detail["code"] == "auth.account_disabled"
+    assert detail["context"]["status"] == "disabled"
 
 
 async def test_me_requires_token(client):

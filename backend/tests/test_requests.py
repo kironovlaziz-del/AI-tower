@@ -166,4 +166,4 @@ async def test_request_other_org_not_visible(
         "/api/v1/requests/", headers=auth_headers(other_token)
     )
     assert resp.status_code == 200
-    assert resp.json() == []
+    assert resp.json()["items"] == []

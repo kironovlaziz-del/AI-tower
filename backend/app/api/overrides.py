@@ -7,8 +7,8 @@ from app.schemas.override import OverrideCreate, OverrideOut
 from app.schemas.pagination import Page
 from app.services.override_service import OverrideService
 from app.services.audit_service import AuditService
-from app.models.user import User
-from app.api.deps import get_current_user
+from app.models.user import User, UserRole
+from app.api.deps import get_current_user, require_role
 
 router = APIRouter()
 
@@ -17,7 +17,10 @@ router = APIRouter()
 async def create_override(
     data: OverrideCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    # Stopping/editing/rolling back an AI request is an operator-level
+    # intervention - same sensitivity as approving/rejecting a request
+    # (approvals.py), so it gets the same role gate.
+    current_user: User = Depends(require_role(UserRole.admin, UserRole.approver)),
 ):
     service = OverrideService(db)
     override = await service.create_override(current_user.org_id, current_user.id, data)
