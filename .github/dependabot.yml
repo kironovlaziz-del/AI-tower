@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
     labels:
       - dependencies
       - backend
@@ -15,7 +15,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
     labels:
       - dependencies
       - frontend
@@ -24,14 +24,7 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    open-pull-requests-limit: 1
     labels:
       - dependencies
       - ci
-
-  - package-ecosystem: docker
-    directory: /
-    schedule:
-      interval: monthly
-    labels:
-      - dependencies
-      - docker
