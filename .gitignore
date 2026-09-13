@@ -29,3 +29,8 @@ backend/data/
 # NER training data & model binaries (rebuilt locally)
 backend/ner_training/data/
 backend/ner_training/output/
+
+# NER training data & model binaries (rebuilt locally)
+backend/ner_training/data/
+backend/ner_training/output/
+
