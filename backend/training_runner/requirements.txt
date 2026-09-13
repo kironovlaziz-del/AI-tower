@@ -7,7 +7,7 @@ datasets==3.2.0
 accelerate==1.2.1
 scikit-learn==1.6.0
 pandas==2.2.3
-joblib==1.4.2
+joblib==1.6.0
 numpy==2.2.1
 sqlalchemy==2.0.36
 psycopg2-binary==2.9.10
