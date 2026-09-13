@@ -42,6 +42,20 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # Training isolation: when true, each training job runs in its own
+    # Docker container built from backend/training_runner/. When false,
+    # training runs in-process inside the Celery worker (the legacy
+    # behaviour, useful for local development without Docker).
+    TRAINING_USE_DOCKER: bool = False
+
+    # Image used for isolated training jobs. Build it once with:
+    #   docker build -t ai-control-tower/training-runner:latest backend/training_runner
+    TRAINING_RUNNER_IMAGE: str = "ai-control-tower/training-runner:latest"
+
+    # Container resource limits. Match these to the host's capacity.
+    TRAINING_CONTAINER_CPUS: float = 2.0
+    TRAINING_CONTAINER_MEMORY: str = "2g"
+
     # MLOps - relative paths are resolved against the project root
     # (backend/) so they work regardless of the current working directory.
     # Absolute paths from .env are used as-is.

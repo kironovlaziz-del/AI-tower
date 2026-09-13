@@ -93,6 +93,32 @@ def _maybe_apply_lora(model, hyperparameters: dict):
 
 
 # ---------------------------------------------------------------------------
+# Path resolution
+# ---------------------------------------------------------------------------
+
+
+def _resolve_dataset_path(dataset) -> str:
+    """
+    Dataset rows uploaded before the A15 fix have a relative file_path
+    (e.g. "data/datasets/7/abc.csv") stored in the DB. Resolve such paths
+    against the backend project root so they work regardless of the
+    process's current working directory - which matters inside the
+    isolated training container, where CWD is /app.
+    """
+    from pathlib import Path
+
+    from app.core.config import settings
+
+    p = Path(dataset.file_path)
+    if p.is_absolute():
+        return str(p)
+    # settings.DATASETS_DIR is absolute (resolved in config.py); its parent
+    # is the backend root.
+    backend_root = Path(settings.DATASETS_DIR).resolve().parent
+    return str((backend_root / p).resolve())
+
+
+# ---------------------------------------------------------------------------
 # Sklearn track
 # ---------------------------------------------------------------------------
 
@@ -159,7 +185,7 @@ def _run_sklearn_training(job: "TrainingJob", dataset: "Dataset") -> None:
     _update_progress(job.id, 10.0, "Loading dataset")
 
     sep = "\t" if dataset.file_format == "tsv" else ","
-    df = pd.read_csv(dataset.file_path, sep=sep)
+    df = pd.read_csv(_resolve_dataset_path(dataset), sep=sep)
 
     if job.target_column not in df.columns:
         raise ValueError(
@@ -309,7 +335,7 @@ def _run_transformer_training(job: "TrainingJob", dataset: "Dataset") -> None:
     _update_progress(job.id, 5.0, "Loading dataset")
 
     sep = "\t" if dataset.file_format == "tsv" else ","
-    df = pd.read_csv(dataset.file_path, sep=sep)
+    df = pd.read_csv(_resolve_dataset_path(dataset), sep=sep)
 
     for col in (text_column, job.target_column):
         if col not in df.columns:
@@ -512,7 +538,7 @@ def _run_generation_training(job: "TrainingJob", dataset: "Dataset") -> None:
     _update_progress(job.id, 5.0, "Loading dataset")
 
     sep = "\t" if dataset.file_format == "tsv" else ","
-    df = pd.read_csv(dataset.file_path, sep=sep)
+    df = pd.read_csv(_resolve_dataset_path(dataset), sep=sep)
     if text_column not in df.columns:
         raise ValueError(
             f"Column '{text_column}' not found in dataset. "
@@ -676,8 +702,12 @@ def _run_generation_training(job: "TrainingJob", dataset: "Dataset") -> None:
 # Celery entry point
 # ---------------------------------------------------------------------------
 
-@celery_app.task(name="training.train_model")
-def train_model(job_id: int) -> None:
+def _train_model_sync(job_id: int) -> None:
+    """
+    In-process training body. Called both by the Celery task (legacy mode)
+    and by the isolated container's entrypoint (Docker mode). Performs the
+    full DB read, training, and status update cycle.
+    """
     db = SyncSessionLocal()
     try:
         job = db.get(TrainingJob, job_id)
@@ -758,3 +788,22 @@ def train_model(job_id: int) -> None:
             )
     finally:
         db.close()
+
+
+@celery_app.task(name="training.train_model")
+def train_model(job_id: int) -> None:
+    """
+    Celery entry point.
+
+    In Docker mode, this launches an isolated container and waits for it
+    to finish. In legacy mode (TRAINING_USE_DOCKER=false) it calls the
+    training body directly in-process.
+    """
+    from app.core.config import settings
+
+    if settings.TRAINING_USE_DOCKER:
+        from app.services.docker_runner import run_job_in_container
+
+        run_job_in_container(job_id)
+    else:
+        _train_model_sync(job_id)
