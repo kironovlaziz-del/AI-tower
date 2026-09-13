@@ -302,7 +302,15 @@
     "lora_dropout": "Dropout",
     "lora_target_modules": "Target modules (comma-separated, empty = auto)",
     "lora_target_modules_placeholder": "query, value",
-    "lora_advanced": "Advanced LoRA settings"
+    "lora_advanced": "Advanced LoRA settings",
+    "hyperparams_title": "Advanced hyperparameters",
+    "max_iter": "Max iterations",
+    "n_estimators": "Number of trees",
+    "max_depth": "Max depth (empty = unlimited)",
+    "class_weight": "Class weight",
+    "class_weight_balanced": "balanced",
+    "class_weight_none": "none",
+    "hyperparams_hint": "Defaults match scikit-learn. Leave blank to use the library default."
   },
   "policies": {
     "title": "Policy Center",

@@ -302,7 +302,15 @@
     "lora_dropout": "Dropout",
     "lora_target_modules": "Maqsadli modullar (vergul bilan, bo'sh = avtomatik)",
     "lora_target_modules_placeholder": "query, value",
-    "lora_advanced": "LoRA qo'shimcha sozlamalari"
+    "lora_advanced": "LoRA qo'shimcha sozlamalari",
+    "hyperparams_title": "Kengaytirilgan giperparametrlar",
+    "max_iter": "Maksimal iteratsiyalar",
+    "n_estimators": "Daraxtlar soni",
+    "max_depth": "Maksimal chuqurlik (bo'sh = cheksiz)",
+    "class_weight": "Sinf og'irligi",
+    "class_weight_balanced": "muvozanatlangan",
+    "class_weight_none": "yo'q",
+    "hyperparams_hint": "Standart qiymatlar scikit-learn bilan bir xil. Bo'sh qoldirsangiz, kutubxona standarti qo'llaniladi."
   },
   "policies": {
     "title": "Siyosat markazi",
