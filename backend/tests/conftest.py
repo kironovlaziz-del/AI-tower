@@ -1,29 +1,33 @@
 """
 Shared pytest fixtures.
 
-Tests run against a dedicated `ai_control_tower_test` database. The schema
-is created once per session via Alembic, and each test gets its own
-transaction that is rolled back afterwards.
+Tests run against a dedicated `ai_control_tower_test` database.
+
+The schema is created once per session by a **synchronous** fixture that
+uses its own short-lived event loop via asyncio.run(). This avoids the
+pytest-asyncio scope mismatch that occurs when a session-scoped async
+fixture is combined with function-scoped test loops.
 """
 
+import asyncio
 import os
 from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 # Override the database name before importing the app so config picks it up.
 os.environ["POSTGRES_DB"] = "ai_control_tower_test"
 os.environ.setdefault("ENVIRONMENT", "development")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-do-not-use-in-production-1234567890")
-os.environ.setdefault("ENCRYPTION_KEY", "")  # dev fallback is fine in tests
+os.environ.setdefault("ENCRYPTION_KEY", "")
 os.environ.setdefault("REDIS_PASSWORD", "")
 
 from app.core.config import settings  # noqa: E402
@@ -38,67 +42,58 @@ TEST_DATABASE_URL = (
 )
 
 
-# NOTE: pytest-asyncio 1.x manages the event loop itself based on
-# asyncio_default_fixture_loop_scope / asyncio_default_test_loop_scope in
-# pytest.ini. Overriding the event_loop fixture here is deprecated and
-# breaks session-scoped async fixtures.
-
 # ---------------------------------------------------------------------------
-# Celery isolation
+# Schema setup
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(autouse=True)
-def mock_celery_send_task(monkeypatch):
+async def _recreate_schema() -> None:
+    engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+    finally:
+        await engine.dispose()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _prepare_schema():
     """
-    Prevent any test from actually dispatching work to Redis.
-
-    Several API endpoints (request creation, approval decisions, training
-    jobs) call `celery_app.send_task(...)`. Without a running worker and a
-    reachable Redis, that raises during the request and masks the behaviour
-    under test. Replacing send_task with a no-op keeps tests hermetic.
+    Synchronous session fixture: creates the test schema once, before any
+    test runs, using its own event loop. This deliberately does not use
+    pytest_asyncio so there is no scope clash with the function-scoped
+    test loop.
     """
-    from app.core.celery_app import celery_app
-
-    class _FakeResult:
-        id = "test-task-id"
-
-    def _fake_send_task(*args, **kwargs):
-        return _FakeResult()
-
-    monkeypatch.setattr(celery_app, "send_task", _fake_send_task)
+    asyncio.run(_recreate_schema())
+    yield
 
 
-@pytest_asyncio.fixture(scope="session")
-async def test_engine():
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False, future=True)
-    async with engine.begin() as conn:
-        # Fresh schema per session. Alembic-driven would be cleaner but
-        # also much slower for local iteration; drop_all + create_all
-        # keeps the test cycle under a second.
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-    yield engine
-    await engine.dispose()
+# ---------------------------------------------------------------------------
+# Per-test fixtures
+# ---------------------------------------------------------------------------
 
 
 @pytest_asyncio.fixture
-async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Function-scoped session bound to an outer transaction that is rolled
-    back after the test. Endpoints run inside the same transaction thanks
-    to the get_db override below.
+    back after the test. The API uses the same session thanks to the
+    get_db override below.
     """
-    connection = await test_engine.connect()
+    engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+    connection = await engine.connect()
     transaction = await connection.begin()
     session_maker = async_sessionmaker(bind=connection, expire_on_commit=False)
     session = session_maker()
 
-    yield session
-
-    await session.close()
-    await transaction.rollback()
-    await connection.close()
+    try:
+        yield session
+    finally:
+        await session.close()
+        await transaction.rollback()
+        await connection.close()
+        await engine.dispose()
 
 
 @pytest_asyncio.fixture
@@ -120,6 +115,32 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         yield ac
 
     app.dependency_overrides.clear()
+
+
+# ---------------------------------------------------------------------------
+# Celery isolation
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def mock_celery_send_task(monkeypatch):
+    """
+    Prevent any test from actually dispatching work to Redis.
+
+    Several API endpoints (request creation, approval decisions, training
+    jobs) call `celery_app.send_task(...)`. Without a running worker and a
+    reachable Redis, that raises during the request and masks the behaviour
+    under test.
+    """
+    from app.core.celery_app import celery_app
+
+    class _FakeResult:
+        id = "test-task-id"
+
+    def _fake_send_task(*args, **kwargs):
+        return _FakeResult()
+
+    monkeypatch.setattr(celery_app, "send_task", _fake_send_task)
 
 
 # ---------------------------------------------------------------------------
