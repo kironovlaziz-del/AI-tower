@@ -125,3 +125,21 @@ async def chat(
     service = DeploymentService(db)
     result = await service.chat(deployment_id, current_user.org_id, data.message)
     return DeploymentChatResponse(**result)
+
+@router.post("/by-name/{name}/predict")
+async def route_predict(
+    name: str,
+    data: DeploymentPredictRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Route a prediction by logical deployment name.
+
+    If multiple active deployments share `name`, one is chosen at random
+    proportional to its traffic_weight. If only one matches, it always
+    receives the request.
+    """
+    service = DeploymentService(db)
+    result = await service.route_predict(current_user.org_id, name, data.features)
+    return result

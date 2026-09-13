@@ -160,6 +160,9 @@ export default function PlaygroundPage() {
                     <div className="playground-model-name">{d.name}</div>
                     <div className="playground-model-meta">
                       <span className="mono">v{d.version}</span>
+                      <span className="mono" style={{ fontSize: 10, opacity: 0.7 }}>
+                        w={d.traffic_weight}
+                      </span>
                       <StatusPill status={d.status} />
                     </div>
                   </button>

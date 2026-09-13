@@ -776,7 +776,8 @@
     "test_predicting": "Hisoblanmoqda…",
     "test_failed": "Bashorat muvaffaqiyatsiz.",
     "test_result": "Natija",
-    "no_completed_jobs": "Joylashtirish uchun kamida bitta tugallangan vazifa kerak."
+    "no_completed_jobs": "Joylashtirish uchun kamida bitta tugallangan vazifa kerak.",
+    "col_weight": "Vazn"
   },
   "errors": {
     "auth.invalid_credentials": "Tashkilot, email yoki parol noto'g'ri.",
@@ -796,7 +797,9 @@
     "deployment.not_found": "Deployment topilmadi.",
     "deployment.not_active": "Deployment faol emas (joriy holat: {{status}}).",
     "deployment.model_unavailable": "Asosiy model artefakti mavjud emas.",
-    "deployment.tabular_not_chat": "Bu deployment jadval modeli ({{task_type}}) va chat uchun ishlatilmaydi."
+    "deployment.tabular_not_chat": "Bu deployment jadval modeli ({{task_type}}) va chat uchun ishlatilmaydi.",
+    "deployment.name_not_found": "'{{name}}' nomli faol deployment topilmadi.",
+    "deployment.no_active_traffic": "'{{name}}' nomli barcha deploymentlarning traffic weight nolga teng."
   },
   "playground": {
     "title": "Playground",

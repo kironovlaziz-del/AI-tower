@@ -76,6 +76,16 @@ export default function DeploymentsPage() {
     }
   }
 
+  async function updateTrafficWeight(id: number, weight: number) {
+    setBusyId(id);
+    try {
+      await updateDeployment(id, { traffic_weight: weight });
+      refresh();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function toggleStatus(dep: ModelDeployment) {
     setBusyId(dep.id);
     try {
@@ -189,6 +199,7 @@ export default function DeploymentsPage() {
                 <th>{t("deployments.col_version")}</th>
                 <th>{t("deployments.col_job")}</th>
                 <th>{t("deployments.col_status")}</th>
+                <th>{t("deployments.col_weight")}</th>
                 <th>{t("deployments.col_created")}</th>
                 <th></th>
               </tr>
@@ -196,12 +207,12 @@ export default function DeploymentsPage() {
             <tbody>
               {loading && (
                 <tr className="empty-row">
-                  <td colSpan={7}>{t("deployments.loading")}</td>
+                  <td colSpan={8}>{t("deployments.loading")}</td>
                 </tr>
               )}
               {!loading && deployments.length === 0 && (
                 <tr className="empty-row">
-                  <td colSpan={7}>{t("deployments.empty")}</td>
+                  <td colSpan={8}>{t("deployments.empty")}</td>
                 </tr>
               )}
               {deployments.map((d) => (

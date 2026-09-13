@@ -182,6 +182,67 @@ class DeploymentService:
             "prediction": prediction,
         }
 
+    async def route_predict(
+        self, org_id: int, name: str, features: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Route a prediction by logical deployment name.
+
+        All active deployments sharing `name` participate with their
+        traffic_weight as a probability mass. The chosen deployment's
+        own predict() then runs as usual, so the response shape is
+        identical to a direct call.
+        """
+        import random
+
+        result = await self.db.execute(
+            select(ModelDeployment).where(
+                ModelDeployment.org_id == org_id,
+                ModelDeployment.name == name,
+                ModelDeployment.status == "active",
+            )
+        )
+        candidates = list(result.scalars().all())
+        if not candidates:
+            raise api_error(
+                status.HTTP_404_NOT_FOUND,
+                "deployment.name_not_found",
+                name=name,
+            )
+
+        total_weight = sum(max(d.traffic_weight or 0.0, 0.0) for d in candidates)
+        if total_weight <= 0:
+            raise api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "deployment.no_active_traffic",
+                name=name,
+            )
+
+        # Weighted random selection. random.uniform gives us a value in
+        # [0, total_weight); walking the list finds the bucket it falls in.
+        pick = random.uniform(0, total_weight)
+        chosen: ModelDeployment = candidates[-1]
+        acc = 0.0
+        for dep in candidates:
+            acc += max(dep.traffic_weight or 0.0, 0.0)
+            if pick <= acc:
+                chosen = dep
+                break
+
+        # Dispatch to the chosen deployment using the existing predict
+        # implementation.
+        result = await self.predict(chosen.id, org_id, features)
+        result["routed_to"] = {
+            "id": chosen.id,
+            "version": chosen.version,
+            "traffic_weight": chosen.traffic_weight,
+        }
+        result["candidates"] = [
+            {"id": d.id, "version": d.version, "traffic_weight": d.traffic_weight}
+            for d in candidates
+        ]
+        return result
+
     async def chat(
         self, deployment_id: int, org_id: int, message: str
     ) -> Dict[str, Any]:

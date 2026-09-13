@@ -776,7 +776,8 @@
     "test_predicting": "Computing…",
     "test_failed": "Prediction failed.",
     "test_result": "Result",
-    "no_completed_jobs": "You need at least one completed training job to deploy."
+    "no_completed_jobs": "You need at least one completed training job to deploy.",
+    "col_weight": "Weight"
   },
   "errors": {
     "auth.invalid_credentials": "Incorrect organization, email or password.",
@@ -796,7 +797,9 @@
     "deployment.not_found": "Deployment not found.",
     "deployment.not_active": "Deployment is not active (current status: {{status}}).",
     "deployment.model_unavailable": "The underlying model artifact is not available.",
-    "deployment.tabular_not_chat": "This deployment is a tabular model ({{task_type}}) and cannot be used in chat."
+    "deployment.tabular_not_chat": "This deployment is a tabular model ({{task_type}}) and cannot be used in chat.",
+    "deployment.name_not_found": "No active deployment named '{{name}}'.",
+    "deployment.no_active_traffic": "All deployments named '{{name}}' have zero traffic weight."
   },
   "playground": {
     "title": "Playground",
