@@ -61,7 +61,11 @@ class Settings(BaseSettings):
     # Requires spaCy plus a language model; when the model is not
     # installed, NER is skipped silently.
     PROMPT_FIREWALL_NER_ENABLED: bool = True
-    PROMPT_FIREWALL_NER_MODEL: str = "en_core_web_sm"
+    PROMPT_FIREWALL_NER_MODELS: dict = {
+    "en": "en_core_web_sm",
+    "uz": "ner_training/output/uz_ner_model",
+    }
+    PROMPT_FIREWALL_NER_DEFAULT_LANG: str = "en"
 
     # MLOps - relative paths are resolved against the project root
     # (backend/) so they work regardless of the current working directory.

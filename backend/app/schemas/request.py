@@ -8,6 +8,9 @@ class RequestCreate(BaseModel):
     provider_id: int
     input_text: str
     purpose: str
+    # ISO-639-1 code of the prompt's language. Optional: when omitted the
+    # Prompt Firewall falls back to PROMPT_FIREWALL_NER_DEFAULT_LANG.
+    language: Optional[str] = None
 
 
 class RequestOut(BaseModel):

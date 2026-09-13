@@ -52,10 +52,10 @@ def test_passes_clean_text():
 # assert the regex layer still works.
 
 
-def _ner_available() -> bool:
+def _ner_available(language: str = "en") -> bool:
     from app.services.prompt_firewall import _load_ner
 
-    return _load_ner() is not None
+    return _load_ner(language) is not None
 
 
 def test_ner_person_name_masked():

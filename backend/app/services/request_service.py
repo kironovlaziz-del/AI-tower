@@ -72,7 +72,9 @@ class RequestService:
         # Prompt Firewall runs before anything is persisted: a blocked
         # prompt never reaches the policy engine or a provider.
         firewall_result = prompt_firewall.scan(
-            data.input_text, blocked_terms=rules.get("blocked_terms")
+            data.input_text,
+            blocked_terms=rules.get("blocked_terms"),
+            language=getattr(data, "language", None) or "en",
         )
 
         # The raw prompt is only ever stored Fernet-encrypted, and never

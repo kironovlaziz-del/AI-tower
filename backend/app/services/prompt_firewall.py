@@ -3,7 +3,7 @@ Prompt Firewall
 
 Runs on every AI request before it reaches the Policy Engine / provider call.
 
-Three layers of protection:
+Four layers of protection:
 
   1. Regex detectors - emails, credit cards, SSNs, IP addresses, API keys,
      phone numbers. Always on, zero dependencies.
@@ -11,12 +11,17 @@ Three layers of protection:
   2. Blocked terms - the active policy version can declare a list of
      substrings that cause the entire prompt to be rejected.
 
-  3. NER - person names, organizations, and locations are detected with a
-     spaCy model. This is optional: when spacy or the configured model is
-     not installed, the layer is skipped and a warning is raised once.
+  3. NER - person names, organizations, and locations via a spaCy model.
+     Optional: when spacy or the model is missing, the layer is skipped.
 
-Masked text is what actually gets stored as `masked_input_text` and sent
-to the provider. The raw input is only kept (encrypted) for audit.
+  4. Gazetteer - fixed lists of well-known Uzbek cities and companies.
+     Complements NER, which needs enough context to extract. A short
+     prompt like "Aziz Karimov Toshkentga jonadi" may fall outside the
+     training distribution, but the gazetteer always catches "Toshkent".
+
+Regex, gazetteer, and NER run on the ORIGINAL text. Their matches are
+merged by character offset with priority regex > gazetteer > NER: any
+lower-priority match that overlaps a higher-priority one is dropped.
 """
 
 import logging
@@ -38,9 +43,6 @@ class FirewallResult:
     blocked_reason: str | None = None
 
 
-# label -> compiled regex. Order matters only in that overlapping matches
-# from an earlier pattern are masked first, so put more specific patterns
-# before more generic ones.
 _DETECTORS: List[Tuple[str, Pattern[str]]] = [
     ("EMAIL", re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")),
     ("CREDIT_CARD", re.compile(r"\b(?:\d[ -]*?){13,19}\b")),
@@ -50,9 +52,6 @@ _DETECTORS: List[Tuple[str, Pattern[str]]] = [
         "API_KEY",
         re.compile(r"\b(?:sk|pk|api|key)[-_][A-Za-z0-9]{12,}\b", re.IGNORECASE),
     ),
-    # Phones must contain a "+" prefix or parentheses. Without that
-    # requirement, ISO dates like "2026-01-15" match the generic
-    # "digits with separators" pattern and get masked.
     (
         "PHONE",
         re.compile(
@@ -62,7 +61,6 @@ _DETECTORS: List[Tuple[str, Pattern[str]]] = [
 ]
 
 
-# NER label -> mask tag. spaCy returns raw labels like "PERSON" or "GPE".
 _NER_LABEL_MAP = {
     "PERSON": "PERSON",
     "PER": "PERSON",
@@ -73,86 +71,129 @@ _NER_LABEL_MAP = {
 }
 
 
-def _mask_with_detectors(text: str) -> Tuple[str, List[str]]:
-    flags: List[str] = []
-    result = text
-    for label, pattern in _DETECTORS:
-        def _replace(match: re.Match, label=label) -> str:
-            return f"[MASKED:{label}]"
+# ---------------------------------------------------------------------------
+# Gazetteer for Uzbek entities
+# ---------------------------------------------------------------------------
+#
+# Fixed lists of common entity mentions, applied only to uz by default.
+# They are intentionally short and easy to extend - add entries as you
+# collect more data. Each entry may be followed by a case suffix
+# ("Toshkent" -> "Toshkentga", "Toshkentda", ...); the pattern consumes
+# the suffix so the full token is masked.
 
-        new_result, count = pattern.subn(_replace, result)
-        if count:
-            flags.append(f"masked:{label.lower()}")
-            result = new_result
-    return result, flags
+_UZ_LOCATIONS = [
+    "Toshkent", "Samarqand", "Buxoro", "Andijon", "Namangan", "Farg'ona",
+    "Nukus", "Xiva", "Qarshi", "Termiz", "Chirchiq", "Angren",
+    "Margilon", "Navoiy", "Jizzax", "Guliston", "Urganch", "Denov",
+    "Kokand",
+]
+_UZ_LOCATION_SUFFIXES = ["ning", "ga", "da", "dan", "gacha", "dagi"]
+
+_UZ_ORGS = [
+    "UzAuto Motors", "Uztelecom", "Tashkent City", "Uzum Market",
+    "Payme", "Click", "Humans", "UzCard", "Beeline Uzbekistan", "TBC Bank",
+]
 
 
-@lru_cache(maxsize=1)
-def _load_ner():
-    """
-    Lazily load the spaCy NER model. Returns None when spacy or the
-    configured model are not available; the caller treats None as
-    "NER disabled" and continues with regex only.
-    """
+def _gazetteer_pattern(names: List[str], suffixes: List[str] | None = None) -> Pattern[str]:
+    names_sorted = sorted(names, key=len, reverse=True)
+    name_alt = "|".join(re.escape(n) for n in names_sorted)
+    if suffixes:
+        suf_alt = "|".join(re.escape(s) for s in suffixes)
+        return re.compile(rf"\b(?:{name_alt})(?:{suf_alt})?\b")
+    return re.compile(rf"\b(?:{name_alt})\b")
+
+
+_GAZETTEER: dict = {
+    "uz": [
+        ("LOCATION", _gazetteer_pattern(_UZ_LOCATIONS, _UZ_LOCATION_SUFFIXES)),
+        ("ORG", _gazetteer_pattern(_UZ_ORGS)),
+    ],
+}
+
+
+def _gazetteer_matches(text: str, language: str) -> List[Tuple[int, int, str]]:
+    out: List[Tuple[int, int, str]] = []
+    for label, pattern in _GAZETTEER.get(language, []):
+        for m in pattern.finditer(text):
+            out.append((m.start(), m.end(), label))
+    return out
+
+
+# ---------------------------------------------------------------------------
+# NER
+# ---------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=8)
+def _load_ner(language: str):
     if not settings.PROMPT_FIREWALL_NER_ENABLED:
         return None
+
+    models = settings.PROMPT_FIREWALL_NER_MODELS or {}
+    model_path = models.get(language)
+    if not model_path and settings.PROMPT_FIREWALL_NER_DEFAULT_LANG:
+        model_path = models.get(settings.PROMPT_FIREWALL_NER_DEFAULT_LANG)
+    if not model_path:
+        return None
+
     try:
         import spacy  # type: ignore
     except ImportError:
         logger.warning(
-            "PROMPT_FIREWALL_NER_ENABLED=true but spacy is not installed. "
-            "Install it with: pip install spacy && python -m spacy download %s",
-            settings.PROMPT_FIREWALL_NER_MODEL,
+            "PROMPT_FIREWALL_NER_ENABLED=true but spacy is not installed."
         )
         return None
+
+    from pathlib import Path
+
+    candidate = Path(model_path)
+    if not candidate.is_absolute() and candidate.exists():
+        resolved = str(candidate.resolve())
+    else:
+        resolved = model_path
+
     try:
-        return spacy.load(settings.PROMPT_FIREWALL_NER_MODEL)
+        return spacy.load(resolved)
     except OSError:
         logger.warning(
-            "spaCy model '%s' is not installed. Run: python -m spacy download %s",
-            settings.PROMPT_FIREWALL_NER_MODEL,
-            settings.PROMPT_FIREWALL_NER_MODEL,
+            "spaCy model '%s' (language=%s) is not installed or not built yet.",
+            model_path,
+            language,
         )
         return None
 
 
-def _mask_with_ner(text: str) -> Tuple[str, List[str]]:
-    """
-    Replace detected person names, organizations, and locations with
-    labelled placeholders. Operates right-to-left so earlier character
-    offsets stay valid after each substitution.
-    """
-    nlp = _load_ner()
+def _ner_matches(text: str, language: str) -> List[Tuple[int, int, str]]:
+    nlp = _load_ner(language)
     if nlp is None:
-        return text, []
-
-    flags: List[str] = []
+        return []
     doc = nlp(text)
-
-    replacements: List[Tuple[int, int, str, str]] = []
+    out: List[Tuple[int, int, str]] = []
     for ent in doc.ents:
         tag = _NER_LABEL_MAP.get(ent.label_)
-        if not tag:
-            continue
-        # Skip entities that are already inside a [MASKED:...] marker -
-        # regex layer may have replaced the original text with one of our
-        # placeholders that happens to look like a proper noun.
-        if text[max(ent.start_char - 1, 0):ent.start_char] == ":":
-            continue
-        replacements.append((ent.start_char, ent.end_char, tag, ent.text))
+        if tag:
+            out.append((ent.start_char, ent.end_char, tag))
+    return out
 
-    if not replacements:
-        return text, []
 
-    # Sort descending by start so we can rebuild the string without
-    # invalidating offsets.
-    replacements.sort(key=lambda x: x[0], reverse=True)
-    result = text
-    for start, end, tag, original in replacements:
-        result = result[:start] + f"[MASKED:{tag}]" + result[end:]
-        flags.append(f"masked:{tag.lower()}")
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
-    return result, flags
+
+def _regex_matches(text: str) -> List[Tuple[int, int, str]]:
+    out: List[Tuple[int, int, str]] = []
+    for label, pattern in _DETECTORS:
+        for m in pattern.finditer(text):
+            out.append((m.start(), m.end(), label))
+    return out
+
+
+def _overlaps(a: Tuple[int, int], b: Tuple[int, int]) -> bool:
+    a_s, a_e = a
+    b_s, b_e = b
+    return not (a_e <= b_s or a_s >= b_e)
 
 
 def _find_blocked_terms(text: str, blocked_terms: Iterable[str]) -> List[str]:
@@ -165,17 +206,47 @@ def _find_blocked_terms(text: str, blocked_terms: Iterable[str]) -> List[str]:
     return hits
 
 
-def scan(text: str, blocked_terms: Iterable[str] | None = None) -> FirewallResult:
+def _apply_masks(text: str, matches: List[Tuple[int, int, str]]) -> str:
+    if not matches:
+        return text
+    matches = sorted(matches, key=lambda x: x[0], reverse=True)
+    result = text
+    for start, end, label in matches:
+        result = result[:start] + f"[MASKED:{label}]" + result[end:]
+    return result
+
+
+def _accept_by_priority(
+    candidates: List[Tuple[int, int, str]],
+    accepted: List[Tuple[int, int, str]],
+) -> None:
+    """
+    Append candidates whose span does not overlap any already-accepted
+    match. Accepts in the given order, so callers control priority by
+    the order they invoke this function.
+    """
+    accepted_spans = [(s, e) for s, e, _ in accepted]
+    for s, e, tag in candidates:
+        if any(_overlaps((s, e), sp) for sp in accepted_spans):
+            continue
+        accepted.append((s, e, tag))
+        accepted_spans.append((s, e))
+
+
+# ---------------------------------------------------------------------------
+# Public entry point
+# ---------------------------------------------------------------------------
+
+
+def scan(
+    text: str,
+    blocked_terms: Iterable[str] | None = None,
+    language: str = "en",
+) -> FirewallResult:
     """
     Run the full firewall pipeline over a prompt.
 
-    blocked_terms comes from the org's active policy version
-    (rules_json["blocked_terms"]), if any is linked to the use case.
-
-    Pipeline order:
-      1. Blocked terms (reject entire prompt if hit).
-      2. Regex masking (emails, cards, phones, keys, ...).
-      3. NER masking (persons, organizations, locations).
+    Priority order for overlapping spans: regex > gazetteer > NER.
     """
     blocked_terms = list(blocked_terms or [])
 
@@ -188,11 +259,18 @@ def scan(text: str, blocked_terms: Iterable[str] | None = None) -> FirewallResul
             blocked_reason=f"Prompt contains a blocked term: {hits[0]}",
         )
 
-    masked_text, regex_flags = _mask_with_detectors(text)
-    masked_text, ner_flags = _mask_with_ner(masked_text)
+    accepted: List[Tuple[int, int, str]] = []
 
-    return FirewallResult(
-        masked_text=masked_text,
-        flags=regex_flags + ner_flags,
-        blocked=False,
-    )
+    _accept_by_priority(_regex_matches(text), accepted)
+    _accept_by_priority(_gazetteer_matches(text, language), accepted)
+    _accept_by_priority(_ner_matches(text, language), accepted)
+
+    flags: List[str] = []
+    for _, _, label in accepted:
+        f = f"masked:{label.lower()}"
+        if f not in flags:
+            flags.append(f)
+
+    masked_text = _apply_masks(text, accepted)
+
+    return FirewallResult(masked_text=masked_text, flags=flags, blocked=False)
