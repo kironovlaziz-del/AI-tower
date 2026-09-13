@@ -727,3 +727,39 @@ export async function fetchDashboardStats(days = 7): Promise<DashboardStats> {
   });
   return data;
 }
+
+// ---- Deployment Monitoring ----
+export interface MonitoringDay {
+  date: string;
+  count: number;
+}
+
+export interface DeploymentMonitoring {
+  deployment_id: number;
+  deployment_name: string;
+  deployment_version: number;
+  window_days: number;
+  total_predictions: number;
+  predictions_by_day: MonitoringDay[];
+  predictions_by_class: Record<string, number>;
+  latency_ms: { min: number | null; avg: number | null; max: number | null };
+  feedback: Record<string, number>;
+  recent_predictions: Array<{
+    id: number;
+    prediction: string | null;
+    latency_ms: number | null;
+    features: Record<string, unknown> | null;
+    created_at: string;
+  }>;
+}
+
+export async function fetchDeploymentMonitoring(
+  id: number,
+  days = 7,
+): Promise<DeploymentMonitoring> {
+  const { data } = await api.get<DeploymentMonitoring>(
+    `/deployments/${id}/monitoring`,
+    { params: { days } },
+  );
+  return data;
+}

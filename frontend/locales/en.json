@@ -828,5 +828,24 @@
     "sending": "…",
     "failed": "Prediction failed.",
     "classified_as": "Classified as: {{label}}"
+  },
+  "monitoring": {
+    "title": "Monitoring",
+    "window": "Last {{days}} days",
+    "total_predictions": "Total predictions",
+    "avg_latency": "Avg latency",
+    "min_latency": "Min",
+    "max_latency": "Max",
+    "predictions_trend": "Predictions over time",
+    "predictions_by_class": "Predictions by class",
+    "feedback": "Feedback",
+    "recent_predictions": "Recent predictions",
+    "no_data": "No data yet - send some predictions to this deployment.",
+    "col_time": "Time",
+    "col_prediction": "Prediction",
+    "col_latency": "Latency (ms)",
+    "col_features": "Features",
+    "feedback_positive": "Correct",
+    "feedback_negative": "Incorrect"
   }
 }

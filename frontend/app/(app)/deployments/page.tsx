@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { Form } from "@/components/Form";
@@ -251,6 +252,12 @@ export default function DeploymentsPage() {
                           {testOpenId === d.id ? "▾" : "▸"}{" "}
                           {t("deployments.test_submit")}
                         </button>
+                        <Link
+                          href={`/deployments/${d.id}/monitoring`}
+                          className="btn btn-sm"
+                        >
+                          {t("monitoring.title")}
+                        </Link>
                       </div>
                     </td>
                   </tr>

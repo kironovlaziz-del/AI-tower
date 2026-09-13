@@ -15,6 +15,7 @@ from app.models.dataset import Dataset
 from app.models.training_job import TrainingJob
 from app.models.notification_channel import NotificationChannel
 from app.models.model_deployment import ModelDeployment
+from app.models.prediction_log import PredictionLog
 
 __all__ = [
     "Organization",
@@ -36,4 +37,5 @@ __all__ = [
     "TrainingJob",
     "NotificationChannel",
     "ModelDeployment",
+    "PredictionLog",
 ]

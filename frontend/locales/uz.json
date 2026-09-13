@@ -828,5 +828,24 @@
     "sending": "…",
     "failed": "Bashorat muvaffaqiyatsiz.",
     "classified_as": "Tasnif: {{label}}"
+  },
+  "monitoring": {
+    "title": "Monitoring",
+    "window": "Oxirgi {{days}} kun",
+    "total_predictions": "Jami bashoratlar",
+    "avg_latency": "O'rtacha kechikish",
+    "min_latency": "Min",
+    "max_latency": "Maks",
+    "predictions_trend": "Vaqt bo'yicha bashoratlar",
+    "predictions_by_class": "Sinf bo'yicha bashoratlar",
+    "feedback": "Fikr-mulohaza",
+    "recent_predictions": "So'nggi bashoratlar",
+    "no_data": "Hozircha ma'lumot yo'q - ushbu deploymentga bashorat yuboring.",
+    "col_time": "Vaqt",
+    "col_prediction": "Bashorat",
+    "col_latency": "Kechikish (ms)",
+    "col_features": "Xususiyatlar",
+    "feedback_positive": "To'g'ri",
+    "feedback_negative": "Noto'g'ri"
   }
 }

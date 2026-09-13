@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 from app.models.model_deployment import ModelDeployment
+from app.models.prediction_log import PredictionLog
 from app.models.training_job import TrainingJob
 from app.schemas.deployment import DeploymentCreate, DeploymentUpdate
 from app.services.training_service import TrainingService
@@ -172,10 +173,34 @@ class DeploymentService:
                 detail="Underlying model artifact is not available.",
             )
 
+        import time
+        started = time.monotonic()
+
         training_service = TrainingService(self.db)
-        prediction = await training_service.predict(
-            job.id, org_id, features
+        prediction = await training_service.predict(job.id, org_id, features)
+
+        elapsed_ms = (time.monotonic() - started) * 1000
+
+        # Persist for monitoring. JSON-serialise features to avoid type
+        # issues (numpy scalars etc.).
+        def _safe_json(obj):
+            try:
+                import json as _json
+                return _json.loads(_json.dumps(obj, default=str))
+            except Exception:
+                return {"_repr": str(obj)[:500]}
+
+        self.db.add(
+            PredictionLog(
+                org_id=org_id,
+                deployment_id=dep.id,
+                features_json=_safe_json(features),
+                prediction=str(prediction)[:255],
+                latency_ms=elapsed_ms,
+            )
         )
+        await self.db.commit()
+
         return {
             "deployment_id": dep.id,
             "version": dep.version,
