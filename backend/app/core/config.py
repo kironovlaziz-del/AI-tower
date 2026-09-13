@@ -56,6 +56,13 @@ class Settings(BaseSettings):
     TRAINING_CONTAINER_CPUS: float = 2.0
     TRAINING_CONTAINER_MEMORY: str = "2g"
 
+    # Prompt Firewall: enable NER-based PII detection (person names,
+    # organizations, locations) on top of the built-in regex detectors.
+    # Requires spaCy plus a language model; when the model is not
+    # installed, NER is skipped silently.
+    PROMPT_FIREWALL_NER_ENABLED: bool = True
+    PROMPT_FIREWALL_NER_MODEL: str = "en_core_web_sm"
+
     # MLOps - relative paths are resolved against the project root
     # (backend/) so they work regardless of the current working directory.
     # Absolute paths from .env are used as-is.

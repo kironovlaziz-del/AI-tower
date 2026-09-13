@@ -34,6 +34,11 @@ RUN pip install --no-cache-dir -r /app/training_runner/requirements.txt
 COPY app /app/app
 COPY training_runner/run_training.py /app/training_runner/run_training.py
 
+# Optional: download the spaCy NER model so the Prompt Firewall works
+# consistently inside the container. Uncomment if you enable
+# PROMPT_FIREWALL_NER_ENABLED in the container environment.
+# RUN python -m spacy download en_core_web_sm
+
 # Datasets and models are mounted at runtime by the launcher; the container
 # itself is stateless.
 VOLUME ["/app/data", "/cache/huggingface"]

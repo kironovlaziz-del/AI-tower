@@ -62,3 +62,4 @@ pytest-asyncio==0.24.0
 pytest-cov==6.0.0
 httpx==0.28.1
 docker==7.1.0
+spacy==3.8.2
