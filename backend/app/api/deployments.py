@@ -11,6 +11,8 @@ from app.schemas.deployment import (
     DeploymentUpdate,
     DeploymentPredictRequest,
     DeploymentPredictResponse,
+    DeploymentChatRequest,
+    DeploymentChatResponse,
 )
 from app.services.deployment_service import DeploymentService
 from app.services.audit_service import AuditService
@@ -107,3 +109,19 @@ async def predict(
         deployment_id, current_user.org_id, data.features
     )
     return DeploymentPredictResponse(**result)
+
+
+@router.post("/{deployment_id}/chat", response_model=DeploymentChatResponse)
+async def chat(
+    deployment_id: int,
+    data: DeploymentChatRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Interactive inference endpoint used by the in-UI playground. Text in,
+    text out - the response is shaped based on the deployment's task type.
+    """
+    service = DeploymentService(db)
+    result = await service.chat(deployment_id, current_user.org_id, data.message)
+    return DeploymentChatResponse(**result)

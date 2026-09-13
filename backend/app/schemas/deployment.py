@@ -49,3 +49,18 @@ class DeploymentPredictResponse(BaseModel):
     deployment_id: int
     version: int
     prediction: Any
+
+
+class DeploymentChatRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    message: str = Field(min_length=1, max_length=4000)
+
+
+class DeploymentChatResponse(BaseModel):
+    deployment_id: int
+    version: int
+    model_type: str  # transformer_text_classification / transformer_text_generation
+    response: str
+    latency_ms: int
+    raw: Any = None

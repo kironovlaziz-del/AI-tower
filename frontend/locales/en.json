@@ -72,7 +72,8 @@
       "training": "Training Service",
       "notifications": "Notification Service",
       "users": "Users",
-      "deployments": "Deployments"
+      "deployments": "Deployments",
+      "playground": "Playground"
     },
     "logout": "Sign out",
     "role_admin": "admin",
@@ -793,6 +794,24 @@
     "training.lora_dropout_range": "LoRA dropout must be between {{min}} and {{max}}.",
     "dataset.not_found": "Dataset not found.",
     "deployment.not_found": "Deployment not found.",
-    "deployment.not_active": "Deployment is not active (current status: {{status}})."
+    "deployment.not_active": "Deployment is not active (current status: {{status}}).",
+    "deployment.model_unavailable": "The underlying model artifact is not available.",
+    "deployment.tabular_not_chat": "This deployment is a tabular model ({{task_type}}) and cannot be used in chat."
+  },
+  "playground": {
+    "title": "Playground",
+    "models": "Models",
+    "loading": "Loading…",
+    "no_models": "No active deployments yet. Create one under Deployments.",
+    "pick_model": "Pick a model",
+    "pick_model_hint": "Select a deployment on the left to start chatting.",
+    "pick_model_placeholder": "Pick a model first",
+    "empty_hint": "Send a message to test this model.",
+    "empty_examples": "Try: \"I love this product\" or \"Worst service ever\".",
+    "placeholder": "Type your message… (Enter to send, Shift+Enter for newline)",
+    "send": "Send",
+    "sending": "…",
+    "failed": "Prediction failed.",
+    "classified_as": "Classified as: {{label}}"
   }
 }

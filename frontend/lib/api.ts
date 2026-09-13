@@ -669,3 +669,24 @@ export async function predictViaDeployment(
   }>(`/deployments/${id}/predict`, { features });
   return data;
 }
+
+// ---- Playground chat ----
+export interface DeploymentChatResponse {
+  deployment_id: number;
+  version: number;
+  model_type: string;
+  response: string;
+  latency_ms: number;
+  raw: unknown;
+}
+
+export async function chatWithDeployment(
+  id: number,
+  message: string,
+): Promise<DeploymentChatResponse> {
+  const { data } = await api.post<DeploymentChatResponse>(
+    `/deployments/${id}/chat`,
+    { message },
+  );
+  return data;
+}

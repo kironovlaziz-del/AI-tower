@@ -72,7 +72,8 @@
       "training": "O'qitish xizmati",
       "notifications": "Bildirishnoma xizmati",
       "users": "Foydalanuvchilar",
-      "deployments": "Deployments"
+      "deployments": "Deployments",
+      "playground": "Playground"
     },
     "logout": "Chiqish",
     "role_admin": "administrator",
@@ -793,6 +794,24 @@
     "training.lora_dropout_range": "LoRA dropout {{min}} va {{max}} oralig'ida bo'lishi kerak.",
     "dataset.not_found": "Ma'lumotlar to'plami topilmadi.",
     "deployment.not_found": "Deployment topilmadi.",
-    "deployment.not_active": "Deployment faol emas (joriy holat: {{status}})."
+    "deployment.not_active": "Deployment faol emas (joriy holat: {{status}}).",
+    "deployment.model_unavailable": "Asosiy model artefakti mavjud emas.",
+    "deployment.tabular_not_chat": "Bu deployment jadval modeli ({{task_type}}) va chat uchun ishlatilmaydi."
+  },
+  "playground": {
+    "title": "Playground",
+    "models": "Modellar",
+    "loading": "Yuklanmoqda…",
+    "no_models": "Faol deploymentlar yo'q. \"Deployments\" sahifasida yarating.",
+    "pick_model": "Model tanlang",
+    "pick_model_hint": "Chatni boshlash uchun chapdan deploymentni tanlang.",
+    "pick_model_placeholder": "Avval model tanlang",
+    "empty_hint": "Ushbu modelni sinash uchun xabar yuboring.",
+    "empty_examples": "Sinab ko'ring: \"I love this product\" yoki \"Worst service ever\".",
+    "placeholder": "Xabar yozing… (Enter — yuborish, Shift+Enter — yangi qator)",
+    "send": "Yuborish",
+    "sending": "…",
+    "failed": "Bashorat muvaffaqiyatsiz.",
+    "classified_as": "Tasnif: {{label}}"
   }
 }

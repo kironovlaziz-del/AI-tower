@@ -181,3 +181,62 @@ class DeploymentService:
             "version": dep.version,
             "prediction": prediction,
         }
+
+    async def chat(
+        self, deployment_id: int, org_id: int, message: str
+    ) -> Dict[str, Any]:
+        """
+        Chat endpoint for the in-UI playground.
+
+        Only text-based models can be chatted with - tabular models need a
+        feature vector, not a message. For classification models the
+        "response" is the predicted label; for generation models it is
+        the model's continuation of the input.
+        """
+        import time
+
+        dep = await self.get_deployment(deployment_id, org_id)
+        if dep.status != "active":
+            raise api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "deployment.not_active",
+                status=dep.status,
+            )
+
+        result = await self.db.execute(
+            select(TrainingJob).where(
+                TrainingJob.id == dep.training_job_id,
+                TrainingJob.org_id == org_id,
+            )
+        )
+        job = result.scalar_one_or_none()
+        if not job or job.status != "completed" or not job.model_path:
+            raise api_error(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "deployment.model_unavailable",
+            )
+
+        if job.task_type == "transformer_text_classification":
+            features = {"text": message}
+        elif job.task_type == "transformer_text_generation":
+            features = {"prompt": message, "max_new_tokens": 80}
+        else:
+            raise api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "deployment.tabular_not_chat",
+                task_type=job.task_type,
+            )
+
+        started = time.monotonic()
+        training_service = TrainingService(self.db)
+        prediction = await training_service.predict(job.id, org_id, features)
+        elapsed_ms = int((time.monotonic() - started) * 1000)
+
+        return {
+            "deployment_id": dep.id,
+            "version": dep.version,
+            "model_type": job.task_type,
+            "response": str(prediction),
+            "latency_ms": elapsed_ms,
+            "raw": prediction,
+        }
