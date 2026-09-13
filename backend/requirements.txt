@@ -32,7 +32,7 @@ psycopg2-binary==2.9.10
 
 # Classic ML
 pandas==2.2.3
-scikit-learn==1.6.0
+scikit-learn==1.9.0
 joblib==1.4.2
 numpy==2.2.1
 
