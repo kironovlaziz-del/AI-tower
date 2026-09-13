@@ -48,6 +48,8 @@ export default function TrainingPage() {
   // Dynamic hyperparameter values, keyed by param.name (string | number | "")
   const [hypervalues, setHypervalues] = useState<Record<string, string>>({});
   const [sklearnAdvanced, setSklearnAdvanced] = useState(false);
+  const [autoTune, setAutoTune] = useState(false);
+  const [autoTuneTrials, setAutoTuneTrials] = useState(20);
 
   // LoRA
   const [useLora, setUseLora] = useState(false);
@@ -167,6 +169,8 @@ export default function TrainingPage() {
         algorithm: isTransformer ? undefined : algorithm,
         base_model: isTransformer ? customModel || baseModel : undefined,
         hyperparameters: Object.keys(hp).length > 0 ? hp : undefined,
+        auto_tune: !isTransformer && autoTune,
+        auto_tune_trials: autoTuneTrials,
       });
       setShowForm(false);
       setName("");

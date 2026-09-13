@@ -1,3 +1,4 @@
+import logging
 import json
 import traceback
 from datetime import datetime, timezone
@@ -9,6 +10,8 @@ from app.core.sync_database import SyncSessionLocal
 from app.models.training_job import TrainingJob
 from app.models.dataset import Dataset
 from app.services import notification_service
+
+logger = logging.getLogger("training_tasks")
 
 
 # ---------------------------------------------------------------------------
@@ -116,6 +119,111 @@ def _resolve_dataset_path(dataset) -> str:
     # is the backend root.
     backend_root = Path(settings.DATASETS_DIR).resolve().parent
     return str((backend_root / p).resolve())
+
+
+# ---------------------------------------------------------------------------
+# Optuna hyperparameter search
+# ---------------------------------------------------------------------------
+
+
+def _run_auto_tune(job: "TrainingJob", dataset: "Dataset") -> None:
+    """
+    Run Optuna over the algorithm's search space, then persist the best
+    hyperparameters on the job so the regular sklearn path uses them.
+    Progress is reported via the same SSE channel as normal training.
+    """
+    import optuna
+    from sklearn.metrics import accuracy_score, f1_score, r2_score
+
+    from app.services import hyperparameter_search, ml_algorithms
+
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+    user_hp = dict(job.hyperparameters_json or {})
+    n_trials = int(user_hp.pop("n_trials", user_hp.pop("auto_tune_trials", 20)))
+    algorithm = job.algorithm
+    is_classification = job.task_type == "tabular_classification"
+    metric_name = "f1_weighted" if is_classification else "r2"
+
+    # Pre-load the dataset once so every trial reuses the same data
+    # matrix. Avoids re-reading the CSV on each trial.
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import LabelEncoder
+
+    sep = "\t" if dataset.file_format == "tsv" else ","
+    df = pd.read_csv(_resolve_dataset_path(dataset), sep=sep)
+    if job.target_column not in df.columns:
+        raise ValueError(f"Target column '{job.target_column}' not found")
+
+    y_raw = df[job.target_column]
+    all_features = df.drop(columns=[job.target_column])
+    X = all_features.select_dtypes(include="number")
+
+    if X.shape[1] == 0:
+        raise ValueError("No numeric feature columns found")
+
+    combined = X.copy()
+    combined["__target__"] = y_raw
+    combined = combined.dropna()
+    X = combined.drop(columns=["__target__"])
+    y_raw = combined["__target__"]
+
+    if is_classification and y_raw.dtype == object:
+        y = LabelEncoder().fit_transform(y_raw)
+    else:
+        y = y_raw
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    def objective(trial):
+        suggested = hyperparameter_search.suggest(algorithm, trial)
+        # User-supplied values win over suggestions so callers can pin
+        # any parameter.
+        merged = {**suggested, **user_hp}
+        # Optuna does not handle None in categorical well; skip and
+        # normalise.
+        merged.pop("n_trials", None)
+        merged.pop("auto_tune_trials", None)
+        model = _build_sklearn_model(algorithm, merged, is_classification)
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        if is_classification:
+            return float(f1_score(y_test, y_pred, average="weighted"))
+        return float(r2_score(y_test, y_pred))
+
+    study = optuna.create_study(
+        direction="maximize", study_name=f"job_{job.id}"
+    )
+
+    def callback(study, trial):
+        pct = 5.0 + 15.0 * (len(study.trials) / n_trials)
+        _update_progress(
+            job.id,
+            pct,
+            f"Auto-tune trial {len(study.trials)}/{n_trials} "
+            f"best={study.best_value:.3f}",
+        )
+
+    study.optimize(objective, n_trials=n_trials, callbacks=[callback])
+
+    # Persist winning params. User-supplied values are already in `user_hp`
+    # and take precedence in `objective`, so the merged best params is
+    # what the final training pass should use.
+    best_params = {**study.best_params, **user_hp}
+    best_params["_auto_tune"] = {
+        "n_trials": n_trials,
+        "best_value": float(study.best_value),
+        "metric": metric_name,
+    }
+    job.hyperparameters_json = best_params
+    _update_progress(
+        job.id,
+        20.0,
+        f"Auto-tune done, best {metric_name}={study.best_value:.3f}",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -732,6 +840,15 @@ def _train_model_sync(job_id: int) -> None:
             elif job.task_type == "transformer_text_generation":
                 _run_generation_training(job, dataset)
             else:
+                hp = job.hyperparameters_json or {}
+                logger.warning(
+                    "dispatch: task_type=%s auto_tune_requested=%s",
+                    job.task_type, hp.get("_auto_tune_requested"),
+                )
+                if hp.get("_auto_tune_requested"):
+                    _run_auto_tune(job, dataset)
+                    db.commit()
+                    db.refresh(job)
                 _run_sklearn_training(job, dataset)
 
         except Exception as exc:  # noqa: BLE001 - report any failure back to the job row

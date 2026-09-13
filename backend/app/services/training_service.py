@@ -230,6 +230,12 @@ class TrainingService:
                     detail=f"Algorithm '{data.algorithm}' does not match task_type '{data.task_type}'.",
                 )
 
+        # Auto-tune bookkeeping: the worker reads this flag to decide
+        # whether to run Optuna before training.
+        if data.auto_tune and data.algorithm:
+            hyperparameters["_auto_tune_requested"] = True
+            hyperparameters["n_trials"] = int(data.auto_tune_trials)
+
         job = TrainingJob(
             org_id=org_id,
             dataset_id=data.dataset_id,

@@ -26,6 +26,12 @@ class TrainingJobCreate(BaseModel):
     base_model: Optional[str] = None
     hyperparameters: Optional[Dict[str, Any]] = None
 
+    # When true, the backend runs Optuna over the algorithm's search space
+    # before training the final model. n_trials bounds the budget.
+    auto_tune: bool = False
+    auto_tune_trials: int = 20
+    auto_tune_metric: Optional[str] = None  # default per task type
+
 
 class TrainingJobOut(BaseModel):
     id: int

@@ -493,6 +493,10 @@ export async function createTrainingJob(payload: {
   algorithm?: string;
   base_model?: string;
   hyperparameters?: Record<string, unknown>;
+  // Optuna auto-tune - runs a hyperparameter search before
+  // training the final model.
+  auto_tune?: boolean;
+  auto_tune_trials?: number;
 }) {
   const { data } = await api.post<TrainingJob>("/training-jobs/", payload);
   return data;
