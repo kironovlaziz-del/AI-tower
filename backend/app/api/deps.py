@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.database import get_db
 from app.core.config import settings
+from app.core.errors import api_error
 from app.models.user import User, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -16,7 +17,7 @@ async def get_current_user(
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="auth.invalid_token",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
@@ -38,9 +39,10 @@ async def get_current_user(
     # is treated as deactivated: their existing JWT stops working even if
     # it has not expired yet.
     if user.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"User account is {user.status}.",
+        raise api_error(
+            status.HTTP_403_FORBIDDEN,
+            "auth.account_disabled",
+            status=user.status,
         )
 
     return user
@@ -63,9 +65,10 @@ def require_role(*allowed: UserRole):
 
     async def checker(current_user: User = Depends(get_current_user)) -> User:
         if current_user.role not in allowed_values:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Requires one of roles: {', '.join(allowed_values)}",
+            raise api_error(
+                status.HTTP_403_FORBIDDEN,
+                "rbac.insufficient_role",
+                allowed=allowed_values,
             )
         return current_user
 

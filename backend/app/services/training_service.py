@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from fastapi import HTTPException, status
+from app.core.errors import api_error
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
@@ -93,25 +94,31 @@ def _validate_lora_params(hyperparameters: dict) -> dict:
 
     r = int(h.get("lora_r", LORA_DEFAULT_R))
     if r < 1 or r > 256:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="lora_r must be between 1 and 256",
+        raise api_error(
+            status.HTTP_400_BAD_REQUEST,
+            "training.lora_r_range",
+            min=1,
+            max=256,
         )
     h["lora_r"] = r
 
     alpha = int(h.get("lora_alpha", LORA_DEFAULT_ALPHA))
     if alpha < 1 or alpha > 512:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="lora_alpha must be between 1 and 512",
+        raise api_error(
+            status.HTTP_400_BAD_REQUEST,
+            "training.lora_alpha_range",
+            min=1,
+            max=512,
         )
     h["lora_alpha"] = alpha
 
     dropout = float(h.get("lora_dropout", LORA_DEFAULT_DROPOUT))
     if dropout < 0 or dropout > 0.9:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="lora_dropout must be between 0 and 0.9",
+        raise api_error(
+            status.HTTP_400_BAD_REQUEST,
+            "training.lora_dropout_range",
+            min=0,
+            max=0.9,
         )
     h["lora_dropout"] = dropout
 
@@ -142,8 +149,8 @@ class TrainingService:
         )
         dataset = result.scalar_one_or_none()
         if not dataset:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Dataset not found"
+            raise api_error(
+                status.HTTP_404_NOT_FOUND, "dataset.not_found"
             )
         return dataset
 
@@ -193,9 +200,16 @@ class TrainingService:
                 data.base_model, data.task_type, gpu_status.gpu_available, gpu_status.gpu_vram_free_gb
             )
             if not fit["allowed"]:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=fit["reason"] or f"'{data.base_model}' is not allowed on this hardware.",
+                # fit carries either a stable code or the legacy reason
+                # string. Prefer the code so the frontend can translate.
+                code = fit.get("reason_code")
+                if code:
+                    context = {k: v for k, v in fit.items() if k not in ("allowed", "reason", "reason_code")}
+                    raise api_error(status.HTTP_400_BAD_REQUEST, code, **context)
+                raise api_error(
+                    status.HTTP_400_BAD_REQUEST,
+                    "training.model_not_allowed",
+                    model=data.base_model,
                 )
         else:
             if not target_column:
@@ -261,8 +275,8 @@ class TrainingService:
         )
         job = result.scalar_one_or_none()
         if not job:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Training job not found"
+            raise api_error(
+                status.HTTP_404_NOT_FOUND, "training.job_not_found"
             )
         return job
 

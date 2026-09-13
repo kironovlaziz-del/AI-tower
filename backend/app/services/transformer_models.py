@@ -146,21 +146,20 @@ def check_model_fit(
             }
         return {
             "allowed": False,
-            "reason": "Эта модель не разрешена без GPU. Выберите модель из списка для CPU.",
+            "reason_code": "training.model_not_allowed_no_gpu",
         }
 
     if not gpu_available and match in GPU_ADDITIONAL_MODELS:
-        return {"allowed": False, "reason": f"'{model_id}' требует GPU."}
+        return {"allowed": False, "reason_code": "training.model_requires_gpu", "model": model_id}
 
     if gpu_available and gpu_vram_free_gb is not None:
         required = match["estimated_vram_gb"] * VRAM_SAFETY_MARGIN
         if gpu_vram_free_gb < required:
             return {
                 "allowed": False,
-                "reason": (
-                    f"Недостаточно свободной VRAM: нужно ~{required:.1f} ГБ "
-                    f"(с запасом), доступно {gpu_vram_free_gb:.1f} ГБ."
-                ),
+                "reason_code": "training.model_insufficient_vram",
+                    "required_gb": round(required, 1),
+                    "available_gb": gpu_vram_free_gb,
             }
 
     return {"allowed": True, "reason": None}

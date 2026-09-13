@@ -15,6 +15,7 @@ from redis import Redis
 from redis.exceptions import RedisError
 
 from app.core.config import settings
+from app.core.errors import api_error
 
 
 def _get_redis() -> Redis:
@@ -76,13 +77,13 @@ def enforce(
             pipe.expire(key, window_seconds, nx=True)
             count, _ = pipe.execute()
             if int(count) > limit:
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=(
-                        f"Too many attempts. Try again in {window_seconds} seconds."
-                    ),
-                    headers={"Retry-After": str(window_seconds)},
+                err = api_error(
+                    status.HTTP_429_TOO_MANY_REQUESTS,
+                    "auth.rate_limited",
+                    retry_after=window_seconds,
                 )
+                err.headers = {"Retry-After": str(window_seconds)}
+                raise err
     except HTTPException:
         raise
     except RedisError:

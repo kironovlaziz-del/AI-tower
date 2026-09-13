@@ -776,5 +776,23 @@
     "test_failed": "Bashorat muvaffaqiyatsiz.",
     "test_result": "Natija",
     "no_completed_jobs": "Joylashtirish uchun kamida bitta tugallangan vazifa kerak."
+  },
+  "errors": {
+    "auth.invalid_credentials": "Tashkilot, email yoki parol noto'g'ri.",
+    "auth.invalid_token": "Hisob ma'lumotlarini tasdiqlab bo'lmadi.",
+    "auth.account_disabled": "Hisobingiz {{status}}. Administratorga murojaat qiling.",
+    "auth.rate_limited": "Juda ko'p urinish. {{retry_after}} soniyadan keyin qayta urinib ko'ring.",
+    "rbac.insufficient_role": "Bu amal uchun ruxsatingiz yo'q (kerak: {{allowed}}).",
+    "training.job_not_found": "O'qitish vazifasi topilmadi.",
+    "training.model_not_allowed_no_gpu": "Bu model GPU talab qiladi va bu serverda mavjud emas.",
+    "training.model_requires_gpu": "'{{model}}' modeli GPU talab qiladi.",
+    "training.model_insufficient_vram": "Bo'sh VRAM yetarli emas: ~{{required_gb}} GB kerak, faqat {{available_gb}} GB bor.",
+    "training.model_not_allowed": "'{{model}}' modeli bu uskunada ruxsat etilmagan.",
+    "training.lora_r_range": "LoRA darajasi {{min}} va {{max}} oralig'ida bo'lishi kerak.",
+    "training.lora_alpha_range": "LoRA alpha {{min}} va {{max}} oralig'ida bo'lishi kerak.",
+    "training.lora_dropout_range": "LoRA dropout {{min}} va {{max}} oralig'ida bo'lishi kerak.",
+    "dataset.not_found": "Ma'lumotlar to'plami topilmadi.",
+    "deployment.not_found": "Deployment topilmadi.",
+    "deployment.not_active": "Deployment faol emas (joriy holat: {{status}})."
   }
 }

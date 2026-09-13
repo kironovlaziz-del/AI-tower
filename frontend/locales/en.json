@@ -776,5 +776,23 @@
     "test_failed": "Prediction failed.",
     "test_result": "Result",
     "no_completed_jobs": "You need at least one completed training job to deploy."
+  },
+  "errors": {
+    "auth.invalid_credentials": "Incorrect organization, email or password.",
+    "auth.invalid_token": "Could not validate credentials.",
+    "auth.account_disabled": "Your account is {{status}}. Contact your administrator.",
+    "auth.rate_limited": "Too many attempts. Try again in {{retry_after}} seconds.",
+    "rbac.insufficient_role": "You don't have permission for this action (requires: {{allowed}}).",
+    "training.job_not_found": "Training job not found.",
+    "training.model_not_allowed_no_gpu": "This model requires a GPU and is not available on this server.",
+    "training.model_requires_gpu": "Model '{{model}}' requires a GPU.",
+    "training.model_insufficient_vram": "Not enough free VRAM: need ~{{required_gb}} GB, only {{available_gb}} GB available.",
+    "training.model_not_allowed": "Model '{{model}}' is not allowed on this hardware.",
+    "training.lora_r_range": "LoRA rank must be between {{min}} and {{max}}.",
+    "training.lora_alpha_range": "LoRA alpha must be between {{min}} and {{max}}.",
+    "training.lora_dropout_range": "LoRA dropout must be between {{min}} and {{max}}.",
+    "dataset.not_found": "Dataset not found.",
+    "deployment.not_found": "Deployment not found.",
+    "deployment.not_active": "Deployment is not active (current status: {{status}})."
   }
 }

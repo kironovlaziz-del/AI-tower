@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { Form } from "@/components/Form";
+import { translateApiError } from "@/lib/errors";
 import { StatusPill } from "@/components/Pill";
 import {
   createTrainingJob,
@@ -178,10 +179,9 @@ export default function TrainingPage() {
       setLoraAdvanced(false);
       router.push(`/training/${job.id}`);
     } catch (err: unknown) {
-      const detail =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail;
-      setError(detail || t("training.submit"));
+      const detail = (err as { response?: { data?: { detail?: unknown } } })
+        ?.response?.data?.detail;
+      setError(translateApiError(detail, t, t("training.submit")));
     } finally {
       setSubmitting(false);
     }

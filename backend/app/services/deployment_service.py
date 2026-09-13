@@ -11,6 +11,7 @@ underlying job's model artifact.
 from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException, status
+from app.core.errors import api_error
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
@@ -119,9 +120,8 @@ class DeploymentService:
         )
         dep = result.scalar_one_or_none()
         if not dep:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Deployment not found",
+            raise api_error(
+                status.HTTP_404_NOT_FOUND, "deployment.not_found"
             )
         return dep
 
@@ -152,9 +152,10 @@ class DeploymentService:
     ) -> Dict[str, Any]:
         dep = await self.get_deployment(deployment_id, org_id)
         if dep.status != "active":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Deployment is not active (current status: {dep.status}).",
+            raise api_error(
+                status.HTTP_400_BAD_REQUEST,
+                "deployment.not_active",
+                status=dep.status,
             )
 
         # Fetch the underlying training job (still scoped to the same org).

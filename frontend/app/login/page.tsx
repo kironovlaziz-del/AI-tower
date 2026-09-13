@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { translateApiError } from "@/lib/errors";
 
 const LAST_ORG_KEY = "ai_ct_last_org";
 
@@ -31,10 +32,9 @@ export default function LoginPage() {
       await login(orgSlug, email, password);
       window.localStorage.setItem(LAST_ORG_KEY, orgSlug);
     } catch (err: unknown) {
-      const detail =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail;
-      setError(detail || t("auth.login_failed"));
+      const detail = (err as { response?: { data?: { detail?: unknown } } })
+        ?.response?.data?.detail;
+      setError(translateApiError(detail, t, t("auth.login_failed")));
     } finally {
       setSubmitting(false);
     }

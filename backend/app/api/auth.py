@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import timedelta
 from app.core.database import get_db
+from app.core.errors import api_error
 from app.core.security import verify_password, create_access_token
 from app.core.config import settings
 from app.core import rate_limit
@@ -52,9 +53,9 @@ async def login(
     )
     org = org_result.scalar_one_or_none()
 
-    generic_error = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Incorrect organization, email or password",
+    generic_error = api_error(
+        status.HTTP_401_UNAUTHORIZED,
+        "auth.invalid_credentials",
     )
 
     if not org:
@@ -72,9 +73,10 @@ async def login(
         raise generic_error
 
     if user.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"User account is {user.status}.",
+        raise api_error(
+            status.HTTP_403_FORBIDDEN,
+            "auth.account_disabled",
+            status=user.status,
         )
 
     # Successful login: clear the email counter so a legitimate user who
