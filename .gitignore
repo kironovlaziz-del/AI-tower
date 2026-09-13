@@ -22,3 +22,6 @@ celery.log
 .env.*
 .en
 !.env.example
+
+# Trained model artifacts and uploaded datasets
+backend/data/

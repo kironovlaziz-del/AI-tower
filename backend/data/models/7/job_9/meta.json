@@ -1,1 +1,0 @@
-{"label_classes": ["0", "1"], "mode": "transformer", "lora": {"r": 4, "alpha": 8, "dropout": 0.05, "target_modules": null, "merged": true}}
