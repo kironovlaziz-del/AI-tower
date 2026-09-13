@@ -39,11 +39,19 @@ class UseCaseService:
             )
         return use_case
     
-    async def list_use_cases(self, org_id: int) -> List[AIUseCase]:
-        result = await self.db.execute(
-            select(AIUseCase).where(AIUseCase.org_id == org_id)
+    async def list_use_cases(
+        self, org_id: int, skip: int = 0, limit: int = 50
+    ) -> tuple[List[AIUseCase], int]:
+        from sqlalchemy import func
+
+        base = select(AIUseCase).where(AIUseCase.org_id == org_id)
+        total = await self.db.scalar(
+            select(func.count()).select_from(base.subquery())
         )
-        return list(result.scalars().all())
+        result = await self.db.execute(
+            base.order_by(AIUseCase.id).offset(skip).limit(limit)
+        )
+        return list(result.scalars().all()), int(total or 0)
     
     async def update_use_case(
         self, use_case_id: int, org_id: int, data: UseCaseUpdate

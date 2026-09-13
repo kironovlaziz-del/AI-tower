@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from app.core.database import get_db
+from app.core.pagination import PaginationParams
 from app.schemas.provider import ProviderCreate, ProviderOut, ProviderUpdate
+from app.schemas.pagination import Page
 from app.services.provider_service import ProviderService
 from app.services.audit_service import AuditService
 from app.models.user import User
@@ -27,13 +29,17 @@ async def create_provider(
     return provider
 
 
-@router.get("/", response_model=List[ProviderOut])
+@router.get("/", response_model=Page[ProviderOut])
 async def list_providers(
+    pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     service = ProviderService(db)
-    return await service.list_providers(current_user.org_id)
+    items, total = await service.list_providers(
+        current_user.org_id, skip=pagination.skip, limit=pagination.limit
+    )
+    return Page(items=items, total=total, skip=pagination.skip, limit=pagination.limit)
 
 
 @router.get("/{provider_id}", response_model=ProviderOut)

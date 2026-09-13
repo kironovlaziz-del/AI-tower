@@ -2,12 +2,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from app.core.database import get_db
+from app.core.pagination import PaginationParams
 from app.schemas.shadow_ai import (
     ShadowSightingCreate,
     ShadowSightingUpdate,
     ShadowSightingRegister,
     ShadowSightingOut,
 )
+from app.schemas.pagination import Page
 from app.services.shadow_ai_service import ShadowAIService
 from app.services.audit_service import AuditService
 from app.services import notification_service
@@ -39,14 +41,21 @@ async def create_sighting(
     return sighting
 
 
-@router.get("/", response_model=List[ShadowSightingOut])
+@router.get("/", response_model=Page[ShadowSightingOut])
 async def list_sightings(
     status_filter: Optional[str] = None,
+    pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     service = ShadowAIService(db)
-    return await service.list_sightings(current_user.org_id, status_filter)
+    items, total = await service.list_sightings(
+        current_user.org_id,
+        status_filter,
+        skip=pagination.skip,
+        limit=pagination.limit,
+    )
+    return Page(items=items, total=total, skip=pagination.skip, limit=pagination.limit)
 
 
 @router.get("/summary")

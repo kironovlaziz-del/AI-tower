@@ -87,12 +87,17 @@ class OverrideService:
         await self.db.refresh(override)
         return override
 
-    async def list_overrides(self, org_id: int, request_id: int) -> List[AIOverride]:
-        # Ensure the request belongs to this org before exposing its overrides
+    async def list_overrides(
+        self, org_id: int, request_id: int, skip: int = 0, limit: int = 50
+    ) -> "tuple[List[AIOverride], int]":
+        from sqlalchemy import func
+
         await self._get_request(request_id, org_id)
-        result = await self.db.execute(
-            select(AIOverride)
-            .where(AIOverride.request_id == request_id)
-            .order_by(AIOverride.created_at.desc())
+        base = select(AIOverride).where(AIOverride.request_id == request_id)
+        total = await self.db.scalar(
+            select(func.count()).select_from(base.subquery())
         )
-        return list(result.scalars().all())
+        result = await self.db.execute(
+            base.order_by(AIOverride.created_at.desc()).offset(skip).limit(limit)
+        )
+        return list(result.scalars().all()), int(total or 0)

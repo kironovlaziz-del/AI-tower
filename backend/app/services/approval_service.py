@@ -225,11 +225,20 @@ class ApprovalService:
 
         return approval
 
-    async def list_approvals(self, org_id: int) -> List[AIApproval]:
-        result = await self.db.execute(
+    async def list_approvals(
+        self, org_id: int, skip: int = 0, limit: int = 50
+    ) -> "tuple[List[AIApproval], int]":
+        from sqlalchemy import func
+
+        base = (
             select(AIApproval)
             .join(AIRequest)
             .where(AIRequest.org_id == org_id)
-            .order_by(AIApproval.created_at.desc())
         )
-        return list(result.scalars().all())
+        total = await self.db.scalar(
+            select(func.count()).select_from(base.subquery())
+        )
+        result = await self.db.execute(
+            base.order_by(AIApproval.created_at.desc()).offset(skip).limit(limit)
+        )
+        return list(result.scalars().all()), int(total or 0)

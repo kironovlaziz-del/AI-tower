@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from app.core.database import get_db
+from app.core.pagination import PaginationParams
 from app.schemas.use_case import UseCaseCreate, UseCaseOut, UseCaseUpdate
+from app.schemas.pagination import Page
 from app.services.use_case_service import UseCaseService
 from app.services.audit_service import AuditService
 from app.models.user import User
@@ -24,13 +26,17 @@ async def create_use_case(
     )
     return use_case
 
-@router.get("/", response_model=List[UseCaseOut])
+@router.get("/", response_model=Page[UseCaseOut])
 async def list_use_cases(
+    pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     service = UseCaseService(db)
-    return await service.list_use_cases(current_user.org_id)
+    items, total = await service.list_use_cases(
+        current_user.org_id, skip=pagination.skip, limit=pagination.limit
+    )
+    return Page(items=items, total=total, skip=pagination.skip, limit=pagination.limit)
 
 @router.get("/{use_case_id}", response_model=UseCaseOut)
 async def get_use_case(

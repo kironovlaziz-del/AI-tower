@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from app.core.database import get_db
+from app.core.pagination import PaginationParams
 from app.schemas.dataset import DatasetOut
+from app.schemas.pagination import Page
 from app.services.dataset_service import DatasetService
 from app.services.audit_service import AuditService
 from app.models.user import User
@@ -31,13 +33,17 @@ async def upload_dataset(
     return dataset
 
 
-@router.get("/", response_model=List[DatasetOut])
+@router.get("/", response_model=Page[DatasetOut])
 async def list_datasets(
+    pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     service = DatasetService(db)
-    return await service.list_datasets(current_user.org_id)
+    items, total = await service.list_datasets(
+        current_user.org_id, skip=pagination.skip, limit=pagination.limit
+    )
+    return Page(items=items, total=total, skip=pagination.skip, limit=pagination.limit)
 
 
 @router.get("/{dataset_id}", response_model=DatasetOut)

@@ -12,6 +12,7 @@ import zipfile
 from datetime import datetime, timedelta, timezone
 
 from app.core.database import get_db
+from app.core.pagination import PaginationParams
 from app.core.config import settings
 from app.schemas.training_job import (
     TrainingJobCreate,
@@ -19,6 +20,7 @@ from app.schemas.training_job import (
     PredictRequest,
     PredictResponse,
 )
+from app.schemas.pagination import Page
 from app.services import ml_algorithms
 from app.services.training_service import TrainingService
 from app.services.audit_service import AuditService
@@ -84,13 +86,17 @@ async def create_training_job(
     return job
 
 
-@router.get("/", response_model=List[TrainingJobOut])
+@router.get("/", response_model=Page[TrainingJobOut])
 async def list_training_jobs(
+    pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     service = TrainingService(db)
-    return await service.list_jobs(current_user.org_id)
+    items, total = await service.list_jobs(
+        current_user.org_id, skip=pagination.skip, limit=pagination.limit
+    )
+    return Page(items=items, total=total, skip=pagination.skip, limit=pagination.limit)
 
 
 @router.get("/{job_id}", response_model=TrainingJobOut)

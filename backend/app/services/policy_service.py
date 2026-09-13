@@ -48,11 +48,19 @@ class PolicyService:
             )
         return policy
     
-    async def list_policies(self, org_id: int) -> List[AIPolicy]:
-        result = await self.db.execute(
-            select(AIPolicy).where(AIPolicy.org_id == org_id)
+    async def list_policies(
+        self, org_id: int, skip: int = 0, limit: int = 50
+    ) -> tuple[List[AIPolicy], int]:
+        from sqlalchemy import func
+
+        base = select(AIPolicy).where(AIPolicy.org_id == org_id)
+        total = await self.db.scalar(
+            select(func.count()).select_from(base.subquery())
         )
-        return list(result.scalars().all())
+        result = await self.db.execute(
+            base.order_by(AIPolicy.id).offset(skip).limit(limit)
+        )
+        return list(result.scalars().all()), int(total or 0)
     
     async def create_policy_version(
         self,

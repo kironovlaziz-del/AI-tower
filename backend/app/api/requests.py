@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 from app.core.database import get_db
+from app.core.pagination import PaginationParams
 from app.schemas.request import RequestCreate, RequestOut, ResponseOut
+from app.schemas.pagination import Page
 from app.services.request_service import RequestService
 from app.services.audit_service import AuditService
 from app.services import notification_service
@@ -38,13 +40,17 @@ async def create_request(
         )
     return ai_request
 
-@router.get("/", response_model=List[RequestOut])
+@router.get("/", response_model=Page[RequestOut])
 async def list_requests(
+    pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     service = RequestService(db)
-    return await service.list_requests(current_user.org_id)
+    items, total = await service.list_requests(
+        current_user.org_id, skip=pagination.skip, limit=pagination.limit
+    )
+    return Page(items=items, total=total, skip=pagination.skip, limit=pagination.limit)
 
 @router.get("/{request_id}", response_model=RequestOut)
 async def get_request(

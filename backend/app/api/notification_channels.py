@@ -2,12 +2,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from app.core.database import get_db
+from app.core.pagination import PaginationParams
 from app.schemas.notification_channel import (
     NotificationChannelCreate,
     NotificationChannelUpdate,
     NotificationChannelOut,
     EVENT_TYPES,
 )
+from app.schemas.pagination import Page
 from app.services.notification_service import NotificationChannelService
 from app.services.audit_service import AuditService
 from app.models.user import User
@@ -37,13 +39,17 @@ async def create_channel(
     return channel
 
 
-@router.get("/", response_model=List[NotificationChannelOut])
+@router.get("/", response_model=Page[NotificationChannelOut])
 async def list_channels(
+    pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     service = NotificationChannelService(db)
-    return await service.list_channels(current_user.org_id)
+    items, total = await service.list_channels(
+        current_user.org_id, skip=pagination.skip, limit=pagination.limit
+    )
+    return Page(items=items, total=total, skip=pagination.skip, limit=pagination.limit)
 
 
 @router.put("/{channel_id}", response_model=NotificationChannelOut)

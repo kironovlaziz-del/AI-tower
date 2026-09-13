@@ -241,13 +241,19 @@ class TrainingService:
 
         return job
 
-    async def list_jobs(self, org_id: int) -> List[TrainingJob]:
-        result = await self.db.execute(
-            select(TrainingJob)
-            .where(TrainingJob.org_id == org_id)
-            .order_by(TrainingJob.created_at.desc())
+    async def list_jobs(
+        self, org_id: int, skip: int = 0, limit: int = 50
+    ) -> "tuple[List[TrainingJob], int]":
+        from sqlalchemy import func
+
+        base = select(TrainingJob).where(TrainingJob.org_id == org_id)
+        total = await self.db.scalar(
+            select(func.count()).select_from(base.subquery())
         )
-        return list(result.scalars().all())
+        result = await self.db.execute(
+            base.order_by(TrainingJob.created_at.desc()).offset(skip).limit(limit)
+        )
+        return list(result.scalars().all()), int(total or 0)
 
     async def get_job(self, job_id: int, org_id: int) -> TrainingJob:
         result = await self.db.execute(

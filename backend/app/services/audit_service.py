@@ -45,6 +45,6 @@ class AuditService:
             query = query.where(AIAuditLog.entity_id == entity_id)
         if actor_user_id is not None:
             query = query.where(AIAuditLog.actor_user_id == actor_user_id)
-        query = query.order_by(AIAuditLog.created_at.desc()).limit(limit)
+        query = query.order_by(AIAuditLog.created_at.desc()).offset(skip).limit(limit)
         result = await self.db.execute(query)
         return list(result.scalars().all())

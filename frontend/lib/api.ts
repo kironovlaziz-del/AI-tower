@@ -27,6 +27,23 @@ import type {
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
+export interface Page<T> {
+  items: T[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+/**
+ * The backend now returns list endpoints as `{items, total, skip, limit}`.
+ * Most call sites only care about `items`, so this helper unwraps the
+ * envelope. Screens that need `total` should call the corresponding
+ * `...Page()` function instead.
+ */
+function unwrap<T>(p: Page<T>): T[] {
+  return p.items;
+}
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
 });
@@ -98,8 +115,8 @@ export async function getMe() {
 
 // ---- Users (admin-only management) ----
 export async function listUsers() {
-  const { data } = await api.get<User[]>("/users/");
-  return data;
+  const { data } = await api.get<Page<User>>("/users/");
+  return unwrap(data);
 }
 
 export async function inviteUser(payload: {
@@ -124,7 +141,12 @@ export async function updateUserStatus(id: number, status: "active" | "disabled"
 
 // ---- Policies (Policy Center) ----
 export async function listPolicies() {
-  const { data } = await api.get<Policy[]>("/policies/");
+  const { data } = await api.get<Page<Policy>>("/policies/");
+  return unwrap(data);
+}
+
+export async function listPoliciesPage(skip = 0, limit = 50) {
+  const { data } = await api.get<Page<Policy>>("/policies/", { params: { skip, limit } });
   return data;
 }
 
@@ -162,7 +184,12 @@ export async function approvePolicyVersion(policyId: number, versionId: number) 
 
 // ---- Providers (Vendor Risk Desk) ----
 export async function listProviders() {
-  const { data } = await api.get<Provider[]>("/providers/");
+  const { data } = await api.get<Page<Provider>>("/providers/");
+  return unwrap(data);
+}
+
+export async function listProvidersPage(skip = 0, limit = 50) {
+  const { data } = await api.get<Page<Provider>>("/providers/", { params: { skip, limit } });
   return data;
 }
 
@@ -199,7 +226,12 @@ export async function updateProvider(
 
 // ---- Use cases ----
 export async function listUseCases() {
-  const { data } = await api.get<UseCase[]>("/use-cases/");
+  const { data } = await api.get<Page<UseCase>>("/use-cases/");
+  return unwrap(data);
+}
+
+export async function listUseCasesPage(skip = 0, limit = 50) {
+  const { data } = await api.get<Page<UseCase>>("/use-cases/", { params: { skip, limit } });
   return data;
 }
 
@@ -233,7 +265,12 @@ export async function updateUseCase(
 
 // ---- Requests (Usage Registry / Action Trace) ----
 export async function listRequests() {
-  const { data } = await api.get<AIRequest[]>("/requests/");
+  const { data } = await api.get<Page<AIRequest>>("/requests/");
+  return unwrap(data);
+}
+
+export async function listRequestsPage(skip = 0, limit = 50) {
+  const { data } = await api.get<Page<AIRequest>>("/requests/", { params: { skip, limit } });
   return data;
 }
 
@@ -259,7 +296,12 @@ export async function createRequest(payload: {
 
 // ---- Approvals ----
 export async function listApprovals() {
-  const { data } = await api.get<Approval[]>("/approvals/");
+  const { data } = await api.get<Page<Approval>>("/approvals/");
+  return unwrap(data);
+}
+
+export async function listApprovalsPage(skip = 0, limit = 50) {
+  const { data } = await api.get<Page<Approval>>("/approvals/", { params: { skip, limit } });
   return data;
 }
 
@@ -278,7 +320,12 @@ export async function decideApproval(
 
 // ---- Incidents ----
 export async function listIncidents() {
-  const { data } = await api.get<Incident[]>("/incidents/");
+  const { data } = await api.get<Page<Incident>>("/incidents/");
+  return unwrap(data);
+}
+
+export async function listIncidentsPage(skip = 0, limit = 50) {
+  const { data } = await api.get<Page<Incident>>("/incidents/", { params: { skip, limit } });
   return data;
 }
 
@@ -325,16 +372,16 @@ export async function listAuditLogs(filters?: {
   if (filters?.actor_user_id != null)
     params.set("actor_user_id", String(filters.actor_user_id));
   const qs = params.toString();
-  const { data } = await api.get<AuditLog[]>(`/audit-logs/${qs ? `?${qs}` : ""}`);
-  return data;
+  const { data } = await api.get<Page<AuditLog>>(`/audit-logs/${qs ? `?${qs}` : ""}`);
+  return unwrap(data);
 }
 
 // ---- Override Console ----
 export async function listOverrides(requestId: number) {
-  const { data } = await api.get<Override[]>("/overrides/", {
+  const { data } = await api.get<Page<Override>>("/overrides/", {
     params: { request_id: requestId },
   });
-  return data;
+  return unwrap(data);
 }
 
 export async function createOverride(payload: {
@@ -348,10 +395,10 @@ export async function createOverride(payload: {
 
 // ---- Shadow AI Monitor ----
 export async function listShadowSightings(statusFilter?: string) {
-  const { data } = await api.get<ShadowSighting[]>("/shadow-ai/", {
+  const { data } = await api.get<Page<ShadowSighting>>("/shadow-ai/", {
     params: statusFilter ? { status_filter: statusFilter } : undefined,
   });
-  return data;
+  return unwrap(data);
 }
 
 export async function createShadowSighting(payload: {
@@ -389,7 +436,12 @@ export async function getComputeStatus() {
 
 // ---- MLOps: Dataset Manager ----
 export async function listDatasets() {
-  const { data } = await api.get<Dataset[]>("/datasets/");
+  const { data } = await api.get<Page<Dataset>>("/datasets/");
+  return unwrap(data);
+}
+
+export async function listDatasetsPage(skip = 0, limit = 50) {
+  const { data } = await api.get<Page<Dataset>>("/datasets/", { params: { skip, limit } });
   return data;
 }
 
@@ -416,7 +468,12 @@ export async function deleteDataset(id: number) {
 
 // ---- MLOps: Training Service ----
 export async function listTrainingJobs() {
-  const { data } = await api.get<TrainingJob[]>("/training-jobs/");
+  const { data } = await api.get<Page<TrainingJob>>("/training-jobs/");
+  return unwrap(data);
+}
+
+export async function listTrainingJobsPage(skip = 0, limit = 50) {
+  const { data } = await api.get<Page<TrainingJob>>("/training-jobs/", { params: { skip, limit } });
   return data;
 }
 
@@ -494,7 +551,12 @@ export async function predictWithTrainingJob(
 
 // ---- Notification Service ----
 export async function listNotificationChannels() {
-  const { data } = await api.get<NotificationChannel[]>("/notification-channels/");
+  const { data } = await api.get<Page<NotificationChannel>>("/notification-channels/");
+  return unwrap(data);
+}
+
+export async function listNotificationChannelsPage(skip = 0, limit = 50) {
+  const { data } = await api.get<Page<NotificationChannel>>("/notification-channels/", { params: { skip, limit } });
   return data;
 }
 

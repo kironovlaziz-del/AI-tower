@@ -35,14 +35,24 @@ class ShadowAIService:
         return sighting
 
     async def list_sightings(
-        self, org_id: int, status_filter: Optional[str] = None
-    ) -> List[ShadowAISighting]:
-        query = select(ShadowAISighting).where(ShadowAISighting.org_id == org_id)
+        self,
+        org_id: int,
+        status_filter: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> "tuple[List[ShadowAISighting], int]":
+        from sqlalchemy import func
+
+        base = select(ShadowAISighting).where(ShadowAISighting.org_id == org_id)
         if status_filter:
-            query = query.where(ShadowAISighting.status == status_filter)
-        query = query.order_by(ShadowAISighting.created_at.desc())
-        result = await self.db.execute(query)
-        return list(result.scalars().all())
+            base = base.where(ShadowAISighting.status == status_filter)
+        total = await self.db.scalar(
+            select(func.count()).select_from(base.subquery())
+        )
+        result = await self.db.execute(
+            base.order_by(ShadowAISighting.created_at.desc()).offset(skip).limit(limit)
+        )
+        return list(result.scalars().all()), int(total or 0)
 
     async def _get(self, sighting_id: int, org_id: int) -> ShadowAISighting:
         result = await self.db.execute(

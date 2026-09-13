@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from app.core.database import get_db
+from app.core.pagination import PaginationParams
 from app.schemas.approval import ApprovalCreate, ApprovalDecision, ApprovalOut
+from app.schemas.pagination import Page
 from app.services.approval_service import ApprovalService
 from app.services.audit_service import AuditService
 from app.services import notification_service
@@ -38,13 +40,17 @@ async def create_approval(
     return approval
 
 
-@router.get("/", response_model=List[ApprovalOut])
+@router.get("/", response_model=Page[ApprovalOut])
 async def list_approvals(
+    pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     service = ApprovalService(db)
-    return await service.list_approvals(current_user.org_id)
+    items, total = await service.list_approvals(
+        current_user.org_id, skip=pagination.skip, limit=pagination.limit
+    )
+    return Page(items=items, total=total, skip=pagination.skip, limit=pagination.limit)
 
 
 @router.post("/{approval_id}/decision", response_model=ApprovalOut)

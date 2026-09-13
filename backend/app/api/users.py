@@ -3,7 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List
 from app.core.database import get_db
+from app.core.pagination import PaginationParams
 from app.core.security import get_password_hash, verify_password
+from app.schemas.pagination import Page
 from app.schemas.user import (
     UserCreate,
     UserInvite,
@@ -92,17 +94,25 @@ async def change_my_password(
     return {"status": "ok"}
 
 
-@router.get("/", response_model=List[UserOut])
+@router.get("/", response_model=Page[UserOut])
 async def list_users(
+    pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.admin)),
 ):
+    from sqlalchemy import func
+
+    base = select(User).where(User.org_id == current_user.org_id)
+    total = await db.scalar(select(func.count()).select_from(base.subquery()))
     result = await db.execute(
-        select(User)
-        .where(User.org_id == current_user.org_id)
-        .order_by(User.created_at.asc())
+        base.order_by(User.created_at.asc()).offset(pagination.skip).limit(pagination.limit)
     )
-    return list(result.scalars().all())
+    return Page(
+        items=list(result.scalars().all()),
+        total=int(total or 0),
+        skip=pagination.skip,
+        limit=pagination.limit,
+    )
 
 
 @router.post("/invite", response_model=UserOut)

@@ -28,11 +28,19 @@ class ProviderService:
         await self.db.refresh(provider)
         return provider
 
-    async def list_providers(self, org_id: int) -> List[AIProvider]:
-        result = await self.db.execute(
-            select(AIProvider).where(AIProvider.org_id == org_id).order_by(AIProvider.name)
+    async def list_providers(
+        self, org_id: int, skip: int = 0, limit: int = 50
+    ) -> tuple[List[AIProvider], int]:
+        from sqlalchemy import func
+
+        base = select(AIProvider).where(AIProvider.org_id == org_id)
+        total = await self.db.scalar(
+            select(func.count()).select_from(base.subquery())
         )
-        return list(result.scalars().all())
+        result = await self.db.execute(
+            base.order_by(AIProvider.name).offset(skip).limit(limit)
+        )
+        return list(result.scalars().all()), int(total or 0)
 
     async def get_provider(self, provider_id: int, org_id: int) -> AIProvider:
         result = await self.db.execute(

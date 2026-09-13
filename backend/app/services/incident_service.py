@@ -40,11 +40,19 @@ class IncidentService:
             )
         return incident
     
-    async def list_incidents(self, org_id: int) -> List[AIIncident]:
-        result = await self.db.execute(
-            select(AIIncident).where(AIIncident.org_id == org_id).order_by(AIIncident.created_at.desc())
+    async def list_incidents(
+        self, org_id: int, skip: int = 0, limit: int = 50
+    ) -> "tuple[List[AIIncident], int]":
+        from sqlalchemy import func
+
+        base = select(AIIncident).where(AIIncident.org_id == org_id)
+        total = await self.db.scalar(
+            select(func.count()).select_from(base.subquery())
         )
-        return list(result.scalars().all())
+        result = await self.db.execute(
+            base.order_by(AIIncident.created_at.desc()).offset(skip).limit(limit)
+        )
+        return list(result.scalars().all()), int(total or 0)
     
     async def update_incident(
         self, incident_id: int, org_id: int, data: IncidentUpdate

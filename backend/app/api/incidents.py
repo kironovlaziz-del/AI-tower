@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from app.core.database import get_db
+from app.core.pagination import PaginationParams
 from app.schemas.incident import IncidentCreate, IncidentUpdate, IncidentOut
+from app.schemas.pagination import Page
 from app.services.incident_service import IncidentService
 from app.services.audit_service import AuditService
 from app.services import notification_service
@@ -31,13 +33,17 @@ async def create_incident(
     )
     return incident
 
-@router.get("/", response_model=List[IncidentOut])
+@router.get("/", response_model=Page[IncidentOut])
 async def list_incidents(
+    pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     service = IncidentService(db)
-    return await service.list_incidents(current_user.org_id)
+    items, total = await service.list_incidents(
+        current_user.org_id, skip=pagination.skip, limit=pagination.limit
+    )
+    return Page(items=items, total=total, skip=pagination.skip, limit=pagination.limit)
 
 @router.get("/{incident_id}", response_model=IncidentOut)
 async def get_incident(

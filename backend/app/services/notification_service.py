@@ -171,11 +171,19 @@ class NotificationChannelService:
         await self.db.refresh(channel)
         return channel
 
-    async def list_channels(self, org_id: int) -> List[NotificationChannel]:
-        result = await self.db.execute(
-            select(NotificationChannel).where(NotificationChannel.org_id == org_id)
+    async def list_channels(
+        self, org_id: int, skip: int = 0, limit: int = 50
+    ) -> "tuple[List[NotificationChannel], int]":
+        from sqlalchemy import func
+
+        base = select(NotificationChannel).where(NotificationChannel.org_id == org_id)
+        total = await self.db.scalar(
+            select(func.count()).select_from(base.subquery())
         )
-        return list(result.scalars().all())
+        result = await self.db.execute(
+            base.order_by(NotificationChannel.id).offset(skip).limit(limit)
+        )
+        return list(result.scalars().all()), int(total or 0)
 
     async def get_channel(self, channel_id: int, org_id: int) -> NotificationChannel:
         from fastapi import HTTPException, status

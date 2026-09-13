@@ -212,13 +212,17 @@ class RequestService:
             )
         return request
 
-    async def list_requests(self, org_id: int):
-        result = await self.db.execute(
-            select(AIRequest)
-            .where(AIRequest.org_id == org_id)
-            .order_by(AIRequest.created_at.desc())
+    async def list_requests(self, org_id: int, skip: int = 0, limit: int = 50):
+        from sqlalchemy import func
+
+        base = select(AIRequest).where(AIRequest.org_id == org_id)
+        total = await self.db.scalar(
+            select(func.count()).select_from(base.subquery())
         )
-        return list(result.scalars().all())
+        result = await self.db.execute(
+            base.order_by(AIRequest.created_at.desc()).offset(skip).limit(limit)
+        )
+        return list(result.scalars().all()), int(total or 0)
 
     async def get_response(self, request_id: int, org_id: int) -> Optional[AIResponse]:
         await self.get_request(request_id, org_id)
