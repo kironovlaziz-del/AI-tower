@@ -84,12 +84,24 @@ async def notify(
     if not channels:
         return
 
+    # Defensive deduplication: even with the DB constraint, old data or
+    # a race could leave two identical channels. Only dispatch each
+    # (channel_type, target) pair once per event.
+    seen: set[tuple[str, str]] = set()
+    unique: list[NotificationChannel] = []
+    for ch in channels:
+        key = (ch.channel_type, ch.target)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(ch)
+
     # SMTP and webhook delivery are blocking calls. Running them on the
     # event loop would freeze every other coroutine for the duration of
     # the network round-trip. Fan out to a thread pool instead.
     tasks = [
         asyncio.to_thread(_dispatch, channel, subject, message, metadata)
-        for channel in channels
+        for channel in unique
         if event_type in (channel.events_json or [])
     ]
     if tasks:
@@ -109,7 +121,12 @@ def notify_sync(
         .filter(NotificationChannel.org_id == org_id, NotificationChannel.enabled == True)  # noqa: E712
         .all()
     )
+    seen: set[tuple[str, str]] = set()
     for channel in channels:
+        key = (channel.channel_type, channel.target)
+        if key in seen:
+            continue
+        seen.add(key)
         if event_type in (channel.events_json or []):
             _dispatch(channel, subject, message, metadata)
 
@@ -121,6 +138,26 @@ class NotificationChannelService:
     async def create_channel(
         self, org_id: int, created_by: int, data: NotificationChannelCreate
     ) -> NotificationChannel:
+        # Reject duplicates at the application layer so the user gets a
+        # clear message instead of an IntegrityError from the DB.
+        existing = await self.db.execute(
+            select(NotificationChannel).where(
+                NotificationChannel.org_id == org_id,
+                NotificationChannel.channel_type == data.channel_type,
+                NotificationChannel.target == data.target,
+            )
+        )
+        if existing.scalar_one_or_none():
+            from fastapi import HTTPException, status
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"A {data.channel_type} channel for '{data.target}' "
+                    "already exists in this organization."
+                ),
+            )
+
         channel = NotificationChannel(
             org_id=org_id,
             channel_type=data.channel_type,

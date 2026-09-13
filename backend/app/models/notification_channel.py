@@ -1,10 +1,30 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, func
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from app.core.database import Base
 
 
 class NotificationChannel(Base):
     __tablename__ = "notification_channels"
+
+    # A channel is uniquely identified by (org, type, target) - two
+    # identical channels would deliver duplicate notifications.
+    __table_args__ = (
+        UniqueConstraint(
+            "org_id",
+            "channel_type",
+            "target",
+            name="uq_notification_channels_org_type_target",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)

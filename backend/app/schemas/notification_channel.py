@@ -29,9 +29,15 @@ class NotificationChannelCreate(BaseModel):
             # Basic structural check - enough to reject obvious typos.
             if "@" not in v or v.startswith("@") or v.endswith("@"):
                 raise ValueError("invalid email address")
+            # Normalize case so "Ops@Example.com" and "ops@example.com"
+            # cannot coexist as two channels.
+            v = v.lower()
         elif channel_type == "webhook":
             if not (v.startswith("http://") or v.startswith("https://")):
                 raise ValueError("webhook URL must start with http:// or https://")
+            # Strip trailing slash so /hook and /hook/ are the same target.
+            if v.endswith("/") and v.count("/") > 2:
+                v = v.rstrip("/")
         return v
 
 
