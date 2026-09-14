@@ -36,6 +36,7 @@ class AuditService:
         entity_type: Optional[str] = None,
         entity_id: Optional[int] = None,
         actor_user_id: Optional[int] = None,
+        skip: int = 0,
         limit: int = 300,
     ) -> List[AIAuditLog]:
         query = select(AIAuditLog).where(AIAuditLog.org_id == org_id)
