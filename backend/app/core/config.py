@@ -72,6 +72,13 @@ class Settings(BaseSettings):
     # Absolute paths from .env are used as-is.
     DATASETS_DIR: str = "data/datasets"
     MODELS_DIR: str = "data/models"
+    RAG_DOCUMENTS_DIR: str = "data/rag_documents"
+    RAG_VECTORIZERS_DIR: str = "data/rag_vectorizers"
+    # Source tree for the browser extension template that
+    # GET /shadow-ai/extension/download packages on demand - configurable
+    # since the deploy layout (monorepo checkout path) isn't guaranteed
+    # to be the same across environments.
+    EXTENSION_TEMPLATE_DIR: str = "../extension"
 
     # Connections: symmetric key used to encrypt provider API keys at rest.
     # Generate with:
@@ -106,7 +113,7 @@ class Settings(BaseSettings):
         not silently create a second data/ tree somewhere else on disk.
         """
         backend_root = Path(__file__).resolve().parents[2]
-        for field in ("DATASETS_DIR", "MODELS_DIR"):
+        for field in ("DATASETS_DIR", "MODELS_DIR", "RAG_DOCUMENTS_DIR", "RAG_VECTORIZERS_DIR", "EXTENSION_TEMPLATE_DIR"):
             value = getattr(self, field)
             p = Path(value)
             if not p.is_absolute():
@@ -157,3 +164,5 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+

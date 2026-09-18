@@ -52,7 +52,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(access_token);
       const me = await getMe();
       setUser(me);
-      router.push("/dashboard");
+      // ui_mode is a personal preference (see backend PUT /users/me/ui-mode),
+      // not a permission - it only decides where a fresh login lands.
+      // null means "never chosen yet", so the person sees the one-time
+      // chooser exactly once; after that we always remember their answer
+      // rather than asking again (per the Simple Mode plan's own framing:
+      // the choice happens at login, once).
+      if (me.ui_mode === "simple") {
+        router.push("/simple");
+      } else if (me.ui_mode === "advanced") {
+        router.push("/dashboard");
+      } else {
+        router.push("/choose-mode");
+      }
     },
     [router]
   );
@@ -75,3 +87,5 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }
+
+

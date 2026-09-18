@@ -175,91 +175,110 @@ export default function UsersPage() {
           </div>
         )}
 
-        <div className="panel">
+        <div className="panel" style={{ overflow: "hidden" }}>
           <div className="panel-header">
             <h2>{t("users.title")}</h2>
           </div>
-          <table>
-            <thead>
-              <tr>
-                <th>{t("users.col_id")}</th>
-                <th>{t("users.col_name")}</th>
-                <th>{t("users.col_email")}</th>
-                <th>{t("users.col_role")}</th>
-                <th>{t("users.col_status")}</th>
-                <th>{t("users.col_created")}</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr className="empty-row">
-                  <td colSpan={7}>{t("users.loading")}</td>
+          <div style={{ overflowX: "auto", width: "100%" }}>
+            <table style={{ minWidth: 680, width: "100%" }}>
+              <thead>
+                <tr>
+                  <th style={{ width: 60 }}>{t("users.col_id")}</th>
+                  <th>{t("users.col_name")}</th>
+                  <th>{t("users.col_email")}</th>
+                  <th style={{ width: 130 }}>{t("users.col_role")}</th>
+                  <th style={{ width: 100 }}>{t("users.col_status")}</th>
+                  <th style={{ width: 180 }}>{t("users.col_created")}</th>
+                  <th style={{ width: 120, textAlign: "right" }}>
+                    {t("users.col_actions") || "Actions"}
+                  </th>
                 </tr>
-              )}
-              {!loading && users.length === 0 && (
-                <tr className="empty-row">
-                  <td colSpan={7}>{t("users.empty")}</td>
-                </tr>
-              )}
-              {users.map((u) => {
-                const isMe = me?.id === u.id;
-                return (
-                  <tr key={u.id}>
-                    <td className="mono">#{u.id}</td>
-                    <td>
-                      {u.name}
-                      {isMe && (
-                        <span className="pill pill-accent" style={{ marginLeft: 8 }}>
-                          {t("users.you")}
-                        </span>
-                      )}
-                    </td>
-                    <td className="mono">{u.email}</td>
-                    <td>
-                      <select
-                        value={u.role}
-                        disabled={busyId === u.id}
-                        onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
-                        style={{
-                          border: "1px solid var(--border-strong)",
-                          borderRadius: 4,
-                          padding: "4px 8px",
-                          background: "var(--bg-panel)",
-                          fontSize: 12,
-                        }}
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {t(`users.roles.${r}`)}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <StatusPill status={u.status} />
-                    </td>
-                    <td className="mono">
-                      {new Date(u.created_at).toLocaleString(i18n.language)}
-                    </td>
-                    <td style={{ whiteSpace: "nowrap" }}>
-                      {!isMe && (
-                        <button
-                          className="btn btn-sm"
-                          disabled={busyId === u.id}
-                          onClick={() => handleStatusToggle(u)}
-                        >
-                          {u.status === "active"
-                            ? t("users.deactivate")
-                            : t("users.activate")}
-                        </button>
-                      )}
-                    </td>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr className="empty-row">
+                    <td colSpan={7}>{t("users.loading")}</td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                )}
+                {!loading && users.length === 0 && (
+                  <tr className="empty-row">
+                    <td colSpan={7}>{t("users.empty")}</td>
+                  </tr>
+                )}
+                {users.map((u) => {
+                  const isMe = me?.id === u.id;
+                  return (
+                    <tr key={u.id}>
+                      <td className="mono" style={{ whiteSpace: "nowrap" }}>
+                        #{u.id}
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: 500 }}>{u.name}</span>
+                        {isMe && (
+                          <span
+                            className="pill pill-accent"
+                            style={{ marginLeft: 8 }}
+                          >
+                            {t("users.you")}
+                          </span>
+                        )}
+                      </td>
+                      <td className="mono" style={{ fontSize: 13 }}>
+                        {u.email}
+                      </td>
+                      <td>
+                        <select
+                          value={u.role}
+                          disabled={busyId === u.id}
+                          onChange={(e) =>
+                            handleRoleChange(u.id, e.target.value as UserRole)
+                          }
+                          style={{
+                            border: "1px solid var(--border-strong)",
+                            borderRadius: 4,
+                            padding: "4px 8px",
+                            background: "var(--bg-panel)",
+                            fontSize: 12,
+                            width: "100%",
+                            maxWidth: 120,
+                          }}
+                        >
+                          {ROLES.map((r) => (
+                            <option key={r} value={r}>
+                              {t(`users.roles.${r}`)}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <StatusPill status={u.status} />
+                      </td>
+                      <td className="mono" style={{ whiteSpace: "nowrap", fontSize: 12 }}>
+                        {new Date(u.created_at).toLocaleString(i18n.language)}
+                      </td>
+                      <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                        {!isMe && (
+                          <button
+                            className="btn btn-sm"
+                            disabled={busyId === u.id}
+                            onClick={() => handleStatusToggle(u)}
+                            style={{
+                              padding: "4px 10px",
+                              fontSize: 12,
+                            }}
+                          >
+                            {u.status === "active"
+                              ? t("users.deactivate")
+                              : t("users.activate")}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </>

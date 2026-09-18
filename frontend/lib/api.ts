@@ -23,6 +23,13 @@ import type {
   NotificationChannel,
   NotificationChannelType,
   RiskLevel,
+  IngestionSource,
+  IngestionSourceCreated,
+  IngestionSourceType,
+  DomainCatalogEntry,
+  DomainPolicyStatus,
+  SeedDomainHint,
+  DiscoveredService,
 } from "./types";
 
 const API_BASE_URL =
@@ -762,4 +769,222 @@ export async function fetchDeploymentMonitoring(
     { params: { days } },
   );
   return data;
+}
+
+// ---- Shadow AI Monitor: ingestion sources ----
+
+export async function listIngestionSources() {
+  const { data } = await api.get<Page<IngestionSource>>("/ingestion-sources/");
+  return unwrap(data);
+}
+
+export async function createIngestionSource(payload: {
+  name: string;
+  source_type: IngestionSourceType;
+}) {
+  const { data } = await api.post<IngestionSourceCreated>("/ingestion-sources/", payload);
+  return data;
+}
+
+export async function updateIngestionSource(
+  id: number,
+  payload: Partial<{ name: string; enabled: boolean }>
+) {
+  const { data } = await api.put<IngestionSource>(`/ingestion-sources/${id}`, payload);
+  return data;
+}
+
+export async function revokeIngestionSource(id: number) {
+  const { data } = await api.delete<IngestionSource>(`/ingestion-sources/${id}`);
+  return data;
+}
+
+// ---- Shadow AI Monitor: AI domain catalog ----
+
+export async function listDomainCatalog() {
+  const { data } = await api.get<Page<DomainCatalogEntry>>("/domain-catalog/");
+  return unwrap(data);
+}
+
+export async function getDomainCatalogSeedSuggestions() {
+  const { data } = await api.get<{ suggestions: SeedDomainHint[] }>(
+    "/domain-catalog/seed-suggestions"
+  );
+  return data.suggestions;
+}
+
+export async function createDomainCatalogEntry(payload: {
+  domain: string;
+  tool_name?: string;
+  category?: string;
+  policy_status: DomainPolicyStatus;
+}) {
+  const { data } = await api.post<DomainCatalogEntry>("/domain-catalog/", payload);
+  return data;
+}
+
+export async function updateDomainCatalogEntry(
+  id: number,
+  payload: Partial<{ tool_name: string; category: string; policy_status: DomainPolicyStatus }>
+) {
+  const { data } = await api.put<DomainCatalogEntry>(`/domain-catalog/${id}`, payload);
+  return data;
+}
+
+export async function deleteDomainCatalogEntry(id: number) {
+  await api.delete(`/domain-catalog/${id}`);
+}
+
+// ---- Personal UI mode preference (Simple Mode wizard entry point) ----
+export async function updateMyUIMode(uiMode: "simple" | "advanced") {
+  const { data } = await api.put<User>("/users/me/ui-mode", { ui_mode: uiMode });
+  return data;
+}
+
+// ---- Shadow AI Monitor: summary counts ----
+export async function getShadowAISummary() {
+  const { data } = await api.get<Record<string, number>>("/shadow-ai/summary");
+  return data;
+}
+
+// ---- Incidents: simple status-only update wrapper ----
+export async function updateIncidentStatus(id: number, status: string) {
+  const { data } = await api.put<Incident>(`/incidents/${id}`, { status });
+  return data;
+}
+
+// ---- Simple Mode wizard ----
+export interface ParsedQAPair {
+  question: string;
+  answer: string;
+}
+
+export interface ParseUploadResponse {
+  qa_pairs: ParsedQAPair[];
+  error_row_count: number;
+  has_unstructured_text: boolean;
+  detected_columns: string[] | null;
+  preview_text: string | null;
+  recommended_approach: string;
+  recommended_reason: string;
+}
+
+export async function parseWizardUpload(file: File, taskType: string) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("task_type", taskType);
+  const { data } = await api.post<ParseUploadResponse>("/simple-mode/parse-upload", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function previewWizardChat(payload: {
+  message: string;
+  system_prompt?: string;
+  provider_id: number;
+}) {
+  const { data } = await api.post<{ answer: string }>("/simple-mode/preview-chat", payload);
+  return data;
+}
+
+export async function recommendApproach(payload: {
+  task_type: string;
+  has_documents: boolean;
+  qa_pair_count: number;
+}) {
+  const { data } = await api.post<{ approach: string; reason: string }>(
+    "/rag/recommend-approach",
+    payload
+  );
+  return data;
+}
+
+export async function finalizeWizardRAG(payload: {
+  name: string;
+  systemPrompt: string;
+  qaPairs: { question: string; answer: string }[];
+  files: File[];
+}) {
+  const form = new FormData();
+  form.append("name", payload.name);
+  form.append("system_prompt", payload.systemPrompt);
+  form.append("qa_pairs_json", JSON.stringify(payload.qaPairs));
+  for (const f of payload.files) form.append("files", f);
+  const { data } = await api.post<{ collection_id: number; document_statuses: string[] }>(
+    "/simple-mode/finalize-rag",
+    form,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+}
+
+export interface RagCollectionInfo {
+  id: number;
+  name: string;
+  document_count: number;
+  chunk_count: number;
+}
+
+export async function getRagCollection(id: number) {
+  const { data } = await api.get<RagCollectionInfo>(`/rag/collections/${id}`);
+  return data;
+}
+
+export async function chatWithRagCollection(
+  collectionId: number,
+  message: string,
+  providerId: number
+) {
+  const { data } = await api.post<{
+    answer: string;
+    sources: { chunk_id: number; document_id: number; text: string; score: number }[];
+  }>(`/rag/collections/${collectionId}/chat`, { message, provider_id: providerId });
+  return data;
+}
+
+
+
+
+// ---- Network discovery (explicit-connect wizard) ----
+export async function listDiscoveredServices() {
+  const { data } = await api.get<Page<DiscoveredService>>("/discovery/");
+  return unwrap(data);
+}
+
+export async function connectDiscoveredService(
+  id: number,
+  creds: {
+    username?: string;
+    password?: string;
+    bind_dn?: string;
+    base_dn?: string;
+    api_token?: string;
+    extra?: Record<string, unknown>;
+  }
+) {
+  const { data } = await api.post<DiscoveredService>(`/discovery/${id}/connect`, creds);
+  return data;
+}
+
+export async function ignoreDiscoveredService(id: number, reason?: string) {
+  const { data } = await api.post<DiscoveredService>(`/discovery/${id}/ignore`, { reason });
+  return data;
+}
+
+
+// ---- Browser extension self-service download ----
+export async function downloadBrowserExtension() {
+  const response = await api.get("/shadow-ai/extension/download", {
+    responseType: "blob",
+  });
+  const blob = new Blob([response.data], { type: "application/zip" });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "shadow-ai-extension.zip";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }

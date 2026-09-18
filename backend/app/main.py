@@ -9,6 +9,11 @@ from app.api import providers
 from app.api import audit
 from app.api import overrides
 from app.api import shadow_ai
+from app.api import ingestion_sources
+from app.api import domain_catalog
+from app.api import rag
+from app.api import simple_mode
+from app.api import discovery
 from app.api import datasets
 from app.api import compute
 from app.api import training_jobs
@@ -55,6 +60,11 @@ app.include_router(providers.router, prefix=f"{settings.API_V1_STR}/providers", 
 app.include_router(audit.router, prefix=f"{settings.API_V1_STR}/audit-logs", tags=["audit"])
 app.include_router(overrides.router, prefix=f"{settings.API_V1_STR}/overrides", tags=["overrides"])
 app.include_router(shadow_ai.router, prefix=f"{settings.API_V1_STR}/shadow-ai", tags=["shadow-ai"])
+app.include_router(ingestion_sources.router, prefix=f"{settings.API_V1_STR}/ingestion-sources", tags=["shadow-ai"])
+app.include_router(domain_catalog.router, prefix=f"{settings.API_V1_STR}/domain-catalog", tags=["shadow-ai"])
+app.include_router(rag.router, prefix=f"{settings.API_V1_STR}/rag", tags=["rag"])
+app.include_router(simple_mode.router, prefix=f"{settings.API_V1_STR}/simple-mode", tags=["simple-mode"])
+app.include_router(discovery.router, prefix=f"{settings.API_V1_STR}/discovery", tags=["discovery"])
 app.include_router(datasets.router, prefix=f"{settings.API_V1_STR}/datasets", tags=["datasets"])
 app.include_router(compute.router, prefix=f"{settings.API_V1_STR}/compute", tags=["compute"])
 app.include_router(training_jobs.router, prefix=f"{settings.API_V1_STR}/training-jobs", tags=["training-jobs"])
@@ -68,3 +78,5 @@ app.include_router(monitoring.router, prefix=f"{settings.API_V1_STR}/deployments
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+

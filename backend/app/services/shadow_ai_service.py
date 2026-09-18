@@ -19,6 +19,7 @@ class ShadowAIService:
     async def create_sighting(
         self, org_id: int, reported_by: int, data: ShadowSightingCreate
     ) -> ShadowAISighting:
+        now = datetime.now(timezone.utc)
         sighting = ShadowAISighting(
             org_id=org_id,
             tool_name=data.tool_name,
@@ -26,12 +27,30 @@ class ShadowAIService:
             detected_via=data.detected_via,
             user_hint=data.user_hint,
             notes=data.notes,
+            display_meta=data.display_meta,
             status="new",
             reported_by=reported_by,
+            seen_count=1,
+            last_seen_at=now,
         )
         self.db.add(sighting)
         await self.db.commit()
         await self.db.refresh(sighting)
+        return sighting
+
+    async def record_repeat_sighting(self, sighting: ShadowAISighting) -> ShadowAISighting:
+        """
+        Called by the telemetry pipeline when a re-observation matches an
+        already-open sighting: instead of creating a duplicate (or doing
+        nothing and losing the signal), bump the counter and timestamp so
+        the UI can distinguish "seen once, days ago" from "seen 200 times,
+        still happening now". Deliberately does NOT commit - the caller
+        (TelemetryService) owns the transaction and commits the whole
+        batch at once.
+        """
+        sighting.seen_count = (sighting.seen_count or 1) + 1
+        sighting.last_seen_at = datetime.now(timezone.utc)
+        self.db.add(sighting)
         return sighting
 
     async def list_sightings(
@@ -119,3 +138,22 @@ class ShadowAIService:
             .group_by(ShadowAISighting.status)
         )
         return {row[0]: row[1] for row in result.all()}
+
+    async def find_open_sighting_by_domain(
+        self, org_id: int, domain: str
+    ) -> Optional[ShadowAISighting]:
+        """
+        Used by the telemetry ingestion pipeline to avoid creating a new
+        sighting (and re-notifying) for every single repeat event against
+        a domain that already has an unresolved sighting open.
+        """
+        result = await self.db.execute(
+            select(ShadowAISighting).where(
+                ShadowAISighting.org_id == org_id,
+                ShadowAISighting.domain == domain,
+                ShadowAISighting.status.in_(["new", "reviewing", "confirmed_shadow"]),
+            )
+        )
+        return result.scalars().first()
+
+

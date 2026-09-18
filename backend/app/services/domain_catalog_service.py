@@ -1,0 +1,120 @@
+from dataclasses import dataclass
+from typing import List, Optional
+
+from fastapi import HTTPException, status
+from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.ai_domain_catalog import AIDomainCatalog
+from app.schemas.domain_catalog import DomainCatalogCreate, DomainCatalogUpdate
+from app.services.domain_catalog_seed import lookup_seed_hint
+
+
+@dataclass
+class DomainMatch:
+    policy_status: str  # allowed, blocked, unknown
+    tool_name: Optional[str]
+    category: Optional[str]
+    matched_catalog_id: Optional[int]
+
+
+class DomainCatalogService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def create_entry(self, org_id: int, data: DomainCatalogCreate) -> AIDomainCatalog:
+        entry = AIDomainCatalog(
+            org_id=org_id,
+            domain=data.domain,
+            tool_name=data.tool_name,
+            category=data.category,
+            policy_status=data.policy_status,
+            source="manual",
+        )
+        self.db.add(entry)
+        try:
+            await self.db.commit()
+        except IntegrityError:
+            await self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"'{data.domain}' is already in this organization's catalog.",
+            )
+        await self.db.refresh(entry)
+        return entry
+
+    async def list_entries(self, org_id: int) -> List[AIDomainCatalog]:
+        """Unpaged - used internally by match_domain(), which needs the
+        full catalog to check suffix matches, not a page of it."""
+        result = await self.db.execute(
+            select(AIDomainCatalog)
+            .where(AIDomainCatalog.org_id == org_id)
+            .order_by(AIDomainCatalog.domain)
+        )
+        return list(result.scalars().all())
+
+    async def list_entries_page(
+        self, org_id: int, skip: int = 0, limit: int = 50
+    ) -> tuple[List[AIDomainCatalog], int]:
+        base = select(AIDomainCatalog).where(AIDomainCatalog.org_id == org_id)
+        total = await self.db.scalar(select(func.count()).select_from(base.subquery()))
+        result = await self.db.execute(
+            base.order_by(AIDomainCatalog.domain).offset(skip).limit(limit)
+        )
+        return list(result.scalars().all()), int(total or 0)
+
+    async def _get(self, entry_id: int, org_id: int) -> AIDomainCatalog:
+        result = await self.db.execute(
+            select(AIDomainCatalog).where(
+                AIDomainCatalog.id == entry_id, AIDomainCatalog.org_id == org_id
+            )
+        )
+        entry = result.scalar_one_or_none()
+        if not entry:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Domain catalog entry not found"
+            )
+        return entry
+
+    async def update_entry(
+        self, entry_id: int, org_id: int, data: DomainCatalogUpdate
+    ) -> AIDomainCatalog:
+        entry = await self._get(entry_id, org_id)
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(entry, field, value)
+        await self.db.commit()
+        await self.db.refresh(entry)
+        return entry
+
+    async def delete_entry(self, entry_id: int, org_id: int) -> None:
+        entry = await self._get(entry_id, org_id)
+        await self.db.delete(entry)
+        await self.db.commit()
+
+    async def match_domain(self, org_id: int, domain: str) -> DomainMatch:
+        """
+        Classify a domain against this org's catalog.
+
+        Exact match wins over suffix match, and a more specific suffix
+        (more labels) wins over a shorter one, so a catalog entry for
+        "chat.openai.com" takes precedence over one for "openai.com" if
+        both happen to exist.
+        """
+        domain = domain.strip().lower()
+        entries = await self.list_entries(org_id)
+
+        exact = next((e for e in entries if e.domain == domain), None)
+        if exact:
+            return DomainMatch(exact.policy_status, exact.tool_name, exact.category, exact.id)
+
+        suffix_matches = [e for e in entries if domain.endswith("." + e.domain)]
+        if suffix_matches:
+            best = max(suffix_matches, key=lambda e: len(e.domain))
+            return DomainMatch(best.policy_status, best.tool_name, best.category, best.id)
+
+        seed_hint = lookup_seed_hint(domain)
+        if seed_hint:
+            return DomainMatch("unknown", seed_hint["tool_name"], seed_hint["category"], None)
+
+        return DomainMatch("unknown", None, None, None)

@@ -9,6 +9,7 @@ export interface User {
   name: string;
   role: "admin" | "approver" | "user";
   status: string;
+  ui_mode?: "simple" | "advanced" | null;
   created_at: string;
 }
 
@@ -136,6 +137,23 @@ export type ShadowSightingStatus =
   | "dismissed"
   | "registered";
 
+export interface DiscoveredService {
+  id: number;
+  org_id: number;
+  service_type: string;
+  host: string;
+  port?: number | null;
+  discovered_via: string;
+  details?: Record<string, unknown> | null;
+  connect_status: string;
+  connect_error?: string | null;
+  connected_ref_type?: string | null;
+  connected_ref_id?: number | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  connected_at?: string | null;
+}
+
 export interface ShadowSighting {
   id: number;
   org_id: number;
@@ -147,6 +165,9 @@ export interface ShadowSighting {
   status: ShadowSightingStatus;
   reported_by?: number | null;
   registered_provider_id?: number | null;
+  display_meta?: Record<string, unknown> | null;
+  seen_count?: number;
+  last_seen_at?: string | null;
   created_at: string;
   resolved_at?: string | null;
 }
@@ -266,3 +287,44 @@ export interface ModelDeployment {
   created_at: string;
   updated_at?: string | null;
 }
+
+// ---- Shadow AI Monitor: telemetry ingestion (stage 1) ----
+
+export type IngestionSourceType = "gateway" | "endpoint" | "browser_extension";
+
+export interface IngestionSource {
+  id: number;
+  org_id: number;
+  name: string;
+  source_type: IngestionSourceType;
+  enabled: boolean;
+  last_seen_at?: string | null;
+  created_at: string;
+}
+
+export interface IngestionSourceCreated extends IngestionSource {
+  api_key: string;
+}
+
+export type DomainPolicyStatus = "allowed" | "blocked" | "unknown";
+
+export interface DomainCatalogEntry {
+  id: number;
+  org_id: number;
+  domain: string;
+  tool_name?: string | null;
+  category?: string | null;
+  policy_status: DomainPolicyStatus;
+  source?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface SeedDomainHint {
+  domain: string;
+  tool_name: string;
+  category: string;
+}
+
+
+

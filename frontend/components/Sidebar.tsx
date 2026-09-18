@@ -36,6 +36,9 @@ const NAV = [
     items: [
       { href: "/incidents", labelKey: "sidebar.nav.incidents" },
       { href: "/shadow-ai", labelKey: "sidebar.nav.shadow_ai" },
+      { href: "/domain-catalog", labelKey: "sidebar.nav.domain_catalog", adminOnly: true },
+      { href: "/ingestion-sources", labelKey: "sidebar.nav.ingestion_sources", adminOnly: true },
+      { href: "/discovery", labelKey: "sidebar.nav.discovery", adminOnly: true },
       { href: "/audit", labelKey: "sidebar.nav.audit" },
     ],
   },

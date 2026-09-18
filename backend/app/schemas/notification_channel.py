@@ -6,6 +6,7 @@ EVENT_TYPES = [
     "incident_created",
     "approval_pending",
     "shadow_ai_reported",
+    "shadow_ai_blocked_domain",
     "request_blocked",
     "training_completed",
     "training_failed",

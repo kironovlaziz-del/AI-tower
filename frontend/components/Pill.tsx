@@ -16,6 +16,7 @@ const STATUS_CLASS: Record<string, string> = {
   completed: "pill-low",
   resolved: "pill-low",
   registered: "pill-low",
+  allowed: "pill-low",
   open: "pill-medium",
   pending: "pill-neutral",
   pending_approval: "pill-medium",

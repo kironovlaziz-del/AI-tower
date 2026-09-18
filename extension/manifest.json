@@ -1,0 +1,67 @@
+{
+  "manifest_version": 3,
+  "name": "AI Control Tower - Shadow AI Protection",
+  "version": "1.1.0",
+  "description": "Enterprise AI monitoring, PII leak prevention, and Shadow AI governance.",
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://www.perplexity.ai/*",
+    "https://perplexity.ai/*",
+    "https://www.deepseek.com/*",
+    "https://chat.deepseek.com/*",
+    "https://copilot.microsoft.com/*",
+    "https://www.midjourney.com/*",
+    "https://midjourney.com/*",
+    "https://huggingface.co/*",
+    "https://v0.dev/*",
+    "https://www.cursor.com/*",
+    "https://cursor.com/*",
+    "https://poe.com/*",
+    "https://mistral.ai/*",
+    "https://chat.mistral.ai/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://www.perplexity.ai/*",
+        "https://perplexity.ai/*",
+        "https://www.deepseek.com/*",
+        "https://chat.deepseek.com/*",
+        "https://copilot.microsoft.com/*",
+        "https://www.midjourney.com/*",
+        "https://midjourney.com/*",
+        "https://huggingface.co/*",
+        "https://v0.dev/*",
+        "https://www.cursor.com/*",
+        "https://cursor.com/*",
+        "https://poe.com/*",
+        "https://mistral.ai/*",
+        "https://chat.mistral.ai/*"
+      ],
+      "js": [
+        "shared/domains.js",
+        "shared/scanner.js",
+        "content/content-script.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "AI Control Tower Monitor"
+  }
+}

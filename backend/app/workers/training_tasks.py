@@ -660,6 +660,18 @@ def _run_generation_training(job: "TrainingJob", dataset: "Dataset") -> None:
             "need at least 20 to fine-tune a generator meaningfully."
         )
 
+    # Simple Mode wizard's "personality" step (screen 7): human-language
+    # style rules, already converted to a plain string by the frontend,
+    # get prepended to every training example rather than passed to the
+    # model as a special token or chat-template field - this is a causal-LM
+    # continuation model, not an instruction-tuned chat model, so there is
+    # no separate "system message" concept to hook into. Prepending it
+    # consistently at training time means prompting with the same prefix
+    # at inference time reliably steers generation toward that style.
+    system_prompt = hyperparameters.get("system_prompt")
+    if system_prompt:
+        texts = [f"{system_prompt}\n\n{t}" for t in texts]
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type == "cuda":
         torch.cuda.empty_cache()
@@ -924,3 +936,5 @@ def train_model(job_id: int) -> None:
         run_job_in_container(job_id)
     else:
         _train_model_sync(job_id)
+
+

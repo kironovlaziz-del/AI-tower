@@ -1,12 +1,15 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from datetime import datetime, timezone
 from app.core.database import get_db
 from app.core.config import settings
 from app.core.errors import api_error
+from app.core.security import hash_api_key
 from app.models.user import User, UserRole
+from app.models.ingestion_source import IngestionSource
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -73,3 +76,30 @@ def require_role(*allowed: UserRole):
         return current_user
 
     return checker
+
+
+async def get_ingestion_source(
+    x_ingestion_key: str = Header(..., alias="X-Ingestion-Key"),
+    db: AsyncSession = Depends(get_db),
+) -> IngestionSource:
+    """
+    Auth dependency for machine identities (Shadow AI telemetry
+    collectors), deliberately separate from get_current_user: these are
+    not human sessions, don't have roles, and are identified by a
+    long-lived hashed API key in a custom header rather than a
+    short-lived Bearer JWT.
+    """
+    result = await db.execute(
+        select(IngestionSource).where(
+            IngestionSource.api_key_hash == hash_api_key(x_ingestion_key)
+        )
+    )
+    source = result.scalar_one_or_none()
+    if source is None or not source.enabled:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="ingestion.invalid_key",
+        )
+    source.last_seen_at = datetime.now(timezone.utc)
+    await db.commit()
+    return source

@@ -16,6 +16,13 @@ from app.models.training_job import TrainingJob
 from app.models.notification_channel import NotificationChannel
 from app.models.model_deployment import ModelDeployment
 from app.models.prediction_log import PredictionLog
+from app.models.ingestion_source import IngestionSource
+from app.models.ai_domain_catalog import AIDomainCatalog
+from app.models.ai_telemetry_event import AITelemetryEvent
+from app.models.document_collection import DocumentCollection
+from app.models.rag_document import Document
+from app.models.document_chunk import DocumentChunk
+from app.models.discovered_service import DiscoveredService
 
 __all__ = [
     "Organization",
@@ -38,4 +45,13 @@ __all__ = [
     "NotificationChannel",
     "ModelDeployment",
     "PredictionLog",
+    "IngestionSource",
+    "AIDomainCatalog",
+    "AITelemetryEvent",
+    "DocumentCollection",
+    "Document",
+    "DocumentChunk",
+    "DiscoveredService",
 ]
+
+

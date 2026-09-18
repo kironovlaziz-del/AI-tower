@@ -12,13 +12,13 @@ import traceback
 from datetime import datetime, timezone
 
 from app.core.celery_app import celery_app
-from app.core.database import AsyncSessionLocal
+from app.core.celery_database import CelerySessionLocal
 from app.models.ai_request import AIRequest
 from app.services.request_service import RequestService
 
 
 async def _process_request_async(request_id: int, org_id: int) -> None:
-    async with AsyncSessionLocal() as db:
+    async with CelerySessionLocal() as db:
         try:
             await RequestService(db).process_request(request_id, org_id)
         except Exception:
@@ -51,3 +51,5 @@ def process_request_task(request_id: int, org_id: int) -> None:
     one per task invocation.
     """
     asyncio.run(_process_request_async(request_id, org_id))
+
+

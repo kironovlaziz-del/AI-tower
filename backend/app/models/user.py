@@ -39,6 +39,15 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     role = Column(String(50), default=UserRole.user.value)
     status = Column(String(50), default="active")
+    # Personal UI preference, deliberately independent of `role`: an admin
+    # may still want the guided Simple Mode wizard for a quick task, and a
+    # regular user may grow into wanting the full console. NULL means "not
+    # chosen yet" - the frontend shows a one-time chooser after login and
+    # persists the answer here, per the Simple Mode plan's own framing
+    # ("выбор при логине") - it must be remembered, not re-asked every time.
+    ui_mode = Column(String(20))  # "simple" | "advanced" | NULL (unset)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     organization = relationship("Organization", backref="users")
+
+

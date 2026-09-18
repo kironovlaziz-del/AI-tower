@@ -1,5 +1,6 @@
 "use client";
 
+import { ExtensionBanner } from "@/components/ExtensionBanner";
 import React, { useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
@@ -139,6 +140,7 @@ export default function RegisterPage() {
             {submitting ? t("register.submitting") : t("register.submit")}
           </button>
         </form>
+        <ExtensionBanner />
         <p className="auth-switch">
           {t("register.already_have")}{" "}
           <Link href="/login">{t("register.login_link")}</Link>

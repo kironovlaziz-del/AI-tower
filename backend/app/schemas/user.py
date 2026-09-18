@@ -61,10 +61,15 @@ class UserOut(UserBase):
     id: int
     org_id: int
     status: str
+    ui_mode: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class UserUIModeUpdate(BaseModel):
+    ui_mode: str = Field(pattern="^(simple|advanced)$")
 
 
 class UserLogin(BaseModel):
@@ -77,3 +82,5 @@ class UserLogin(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+

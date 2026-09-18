@@ -1,5 +1,6 @@
 "use client";
 
+import { ExtensionBanner } from "@/components/ExtensionBanner";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
@@ -92,6 +93,7 @@ export default function LoginPage() {
             {submitting ? t("auth.login_button_loading") : t("auth.login_button")}
           </button>
         </form>
+        <ExtensionBanner />
         <p className="auth-switch">
           {t("auth.no_account")} <Link href="/register">{t("auth.register_link")}</Link>
         </p>

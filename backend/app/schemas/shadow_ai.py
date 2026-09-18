@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 
 
 class ShadowSightingCreate(BaseModel):
@@ -9,6 +9,7 @@ class ShadowSightingCreate(BaseModel):
     detected_via: str = "manual"  # manual, expense_report, network_proxy, browser_extension, other
     user_hint: Optional[str] = None
     notes: Optional[str] = None
+    display_meta: Optional[Dict[str, Any]] = None
 
 
 class ShadowSightingUpdate(BaseModel):
@@ -32,8 +33,13 @@ class ShadowSightingOut(BaseModel):
     status: str
     reported_by: Optional[int]
     registered_provider_id: Optional[int]
+    display_meta: Optional[Dict[str, Any]] = None
+    seen_count: int = 1
+    last_seen_at: Optional[datetime] = None
     created_at: datetime
     resolved_at: Optional[datetime]
 
     class Config:
         from_attributes = True
+
+

@@ -34,3 +34,12 @@ backend/ner_training/output/
 backend/ner_training/data/
 backend/ner_training/output/
 
+
+# agent: secrets and compiled binary (source is committed, these are not)
+agent/config.json
+agent/shadow-agent
+
+# temporary patch scripts and backups (dev artifacts)
+frontend/*_patch.py
+frontend/**/*.bak
+*.bak
