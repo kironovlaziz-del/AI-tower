@@ -6,6 +6,22 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-19
+
+### Added
+
+- **Discovery connect handlers (LDAP/AD, DNS)** — the explicit-connect
+  wizard now really connects. For Active Directory/LDAP it performs a
+  real `ldap3` bind with the admin-supplied read-only credentials, does
+  one bounded read (naming context + capped person count), and stores
+  the connection with the bind password encrypted at rest (Fernet). For
+  DNS it runs a credential-less reachability probe. Unsupported service
+  types still report honestly instead of faking success.
+- **`service_connections` table** — holds connected-service state and
+  encrypted secrets for discovered infrastructure, separate from
+  `ai_providers`.
+
+
 ## [0.2.0] - 2026-09-18
 
 ### Added
