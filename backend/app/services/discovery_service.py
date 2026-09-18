@@ -10,6 +10,7 @@ from app.schemas.discovery import (
     DiscoveredServiceIn,
     ServiceConnectRequest,
 )
+from app.services.discovery_connect_handlers import CONNECT_HANDLERS, ServiceConnectError
 
 
 class DiscoveryService:
@@ -123,22 +124,19 @@ class DiscoveryService:
         establishes a real connection to a discovered service - there is
         no anonymous/automatic attach anywhere in the system.
 
-        The actual per-service connection logic (LDAP bind for AD, zone
-        read for DNS, API auth for a firewall) is delegated to a
-        type-specific handler. Until those handlers land in the discovery
-        track, connecting records the admin's intent and the supplied
-        credential *reference*, marks the service, and returns - it does
-        NOT fabricate a fake "connected" success. A service whose handler
-        isn't implemented yet is marked "needs_credentials" with a clear
+        The actual per-service connection logic (LDAP bind for AD, DNS
+        reachability check) is delegated to a type-specific handler in
+        discovery_connect_handlers.CONNECT_HANDLERS. A service type with
+        no registered handler is marked "needs_credentials" with a clear
         message rather than pretending it worked.
         """
         svc = await self._get(service_id, org_id)
 
-        handler = _CONNECT_HANDLERS.get(svc.service_type)
+        handler = CONNECT_HANDLERS.get(svc.service_type)
         if handler is None:
             svc.connect_status = "needs_credentials"
             svc.connect_error = (
-                f"Connecting '{svc.service_type}' services is not implemented yet. "
+                f"Connecting '{svc.service_type}' services is not supported yet. "
                 "The credentials were not used or stored."
             )
             await self.db.commit()
@@ -149,7 +147,7 @@ class DiscoveryService:
         # their own - they only run because we reached here from an
         # explicit admin action with supplied credentials.
         try:
-            ref_type, ref_id = await handler(self.db, org_id, svc, creds)
+            ref_type, ref_id = await handler(self.db, org_id, svc, creds, connected_by)
             svc.connect_status = "connected"
             svc.connect_error = None
             svc.connected_ref_type = ref_type
@@ -163,19 +161,3 @@ class DiscoveryService:
         await self.db.commit()
         await self.db.refresh(svc)
         return svc
-
-
-class ServiceConnectError(Exception):
-    """Raised by a connect handler when the supplied credentials don't
-    work or the target refuses the connection - surfaced to the admin as
-    connect_error, not swallowed."""
-
-
-# Per-service-type connect handlers. Each takes (db, org_id, service,
-# creds) and returns (connected_ref_type, connected_ref_id) on success,
-# or raises ServiceConnectError. Empty for now: the real LDAP/DNS/DHCP
-# handlers belong to the discovery track and will register here. Keeping
-# this as an explicit, initially-empty registry (rather than a stub that
-# fakes success) is what guarantees the system never claims to have
-# connected to something it hasn't.
-_CONNECT_HANDLERS = {}

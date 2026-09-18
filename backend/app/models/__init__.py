@@ -23,6 +23,7 @@ from app.models.document_collection import DocumentCollection
 from app.models.rag_document import Document
 from app.models.document_chunk import DocumentChunk
 from app.models.discovered_service import DiscoveredService
+from app.models.service_connection import ServiceConnection
 
 __all__ = [
     "Organization",
@@ -52,6 +53,7 @@ __all__ = [
     "Document",
     "DocumentChunk",
     "DiscoveredService",
+    "ServiceConnection",
 ]
 
 
