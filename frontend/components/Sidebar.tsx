@@ -45,6 +45,7 @@ const NAV = [
   {
     sectionKey: "sidebar.sections.mlops",
     items: [
+      { href: "/simple", labelKey: "sidebar.nav.simple_mode" },
       { href: "/compute", labelKey: "sidebar.nav.compute" },
       { href: "/datasets", labelKey: "sidebar.nav.datasets" },
       { href: "/training", labelKey: "sidebar.nav.training" },

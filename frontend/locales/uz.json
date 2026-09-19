@@ -76,7 +76,8 @@
       "users": "Foydalanuvchilar",
       "deployments": "Deployments",
       "playground": "Playground",
-      "discovery": "Tarmoq kashfiyoti"
+      "discovery": "Tarmoq kashfiyoti",
+      "simple_mode": "Oddiy rejim (yordamchi)"
     },
     "logout": "Chiqish",
     "role_admin": "administrator",
@@ -1081,7 +1082,8 @@
     "no_data_pasted_filename": "kiritilgan-matn",
     "no_data_files_added": "{{count}} ta hujjat qo'shildi",
     "no_data_rag_hint": "Bu RAG deb ataladi — model o'qitilmasdan to'g'ridan-to'g'ri hujjatlaringizdan javob beradi. Tez, arzon, aniq.",
-    "no_data_reason": "Sizda hujjatlar/bilimlar bazasi bor — model ulardan to'g'ridan-to'g'ri javob beradi, o'qitishsiz."
+    "no_data_reason": "Sizda hujjatlar/bilimlar bazasi bor — model ulardan to'g'ridan-to'g'ri javob beradi, o'qitishsiz.",
+    "exit_to_main": "Asosiy rejimga"
   },
   "discovery": {
     "title": "Tarmoq kashfiyoti",

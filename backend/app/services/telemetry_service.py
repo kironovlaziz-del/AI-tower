@@ -177,9 +177,9 @@ class TelemetryService:
                 self.db,
                 org_id,
                 "shadow_ai_blocked_domain",
-                f"Заблокированный AI-домен обнаружен: {domain}",
-                f"Инцидент #{incident.id} создан автоматически. "
-                f"Sighting #{sighting.id} в Shadow AI Monitor.",
+                f"Blocked AI domain detected: {domain}",
+                f"Incident #{incident.id} was created automatically. "
+                f"Sighting #{sighting.id} in Shadow AI Monitor.",
                 {"sighting_id": sighting.id, "incident_id": incident.id},
             )
             return "blocked", 1, 1
@@ -188,9 +188,9 @@ class TelemetryService:
             self.db,
             org_id,
             "shadow_ai_reported",
-            f"Замечено несанкционированное использование AI: {sighting.tool_name}",
-            f"Обнаружено автоматически через {event.event_type}. "
-            f"Требует разбора в Shadow AI Monitor.",
+            f"Unsanctioned AI usage detected: {sighting.tool_name}",
+            f"Detected automatically via {event.event_type}. "
+            f"Needs review in Shadow AI Monitor.",
             {"sighting_id": sighting.id},
         )
         return "unknown", 1, 0
@@ -293,9 +293,9 @@ class TelemetryService:
             self.db,
             org_id,
             "shadow_ai_reported",
-            f"Обнаружен локальный AI-инструмент: {sighting.tool_name}",
-            f"Найдено на устройстве '{event.agent_id or 'неизвестно'}' через {event.event_type}. "
-            f"Требует разбора в Shadow AI Monitor.",
+            f"Local AI tool detected: {sighting.tool_name}",
+            f"Found on device '{event.agent_id or 'unknown'}' via {event.event_type}. "
+            f"Needs review in Shadow AI Monitor.",
             {"sighting_id": sighting.id},
         )
         return 1

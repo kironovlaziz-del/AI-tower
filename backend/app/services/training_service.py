@@ -308,7 +308,7 @@ class TrainingService:
         # code, so the job would otherwise be stuck at "running" forever.
         job.status = "cancelled"
         job.finished_at = datetime.now(timezone.utc)
-        job.error_message = "Остановлено пользователем."
+        job.error_message = "Stopped by user."
         await self.db.commit()
         await self.db.refresh(job)
         return job
@@ -442,3 +442,5 @@ class TrainingService:
                 pad_token_id=tokenizer.eos_token_id,
             )
         return tokenizer.decode(output_ids[0], skip_special_tokens=True)
+
+

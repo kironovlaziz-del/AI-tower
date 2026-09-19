@@ -3,14 +3,14 @@ Simple Mode: RAG vs Fine-tuning recommendation.
 
 Translates the plan's decision table into a deterministic, explainable
 function. The wizard never asks the person to choose between RAG and
-fine-tuning directly (per the plan's design principle: "система сама
-решает... пользователь просто нажимает Продолжить") - it infers the
-right approach from two things it already knows by the time this
-decision is made (wizard screen 6, right after data parsing):
+   fine-tuning directly (per the plan's design principle: the system
+   decides on its own and the user just clicks "Continue") - it infers
+   the right approach from two things it already knows by the time this
+   decision is made (wizard screen 6, right after data parsing):
 
 1. What the model should do (task_type) - this is collected explicitly
-   at wizard screen 2 ("Что должна делать модель?"), so "style_writing"
-   IS the plan's "в фирменном стиле" signal. There's no need to try to
+   at wizard screen 2 ("What should the model do?"), so "style_writing"
+   IS the plan's "in our style" signal. There's no need to try to
    detect writing style from raw text statistically - the person already
    told us via their screen-2 choice, and inferring it a second time from
    data would be both redundant and far less reliable.
@@ -54,8 +54,8 @@ def recommend_approach(
         return ApproachRecommendation(
             approach="fine_tuning_classification",
             reason=(
-                "Классификация обращений — это отдельная задача обучения "
-                "классификатора, а не генерации ответов."
+                "Classifying tickets is a separate task of training a "
+                "classifier, not generating answers."
             ),
         )
 
@@ -63,9 +63,9 @@ def recommend_approach(
         return ApproachRecommendation(
             approach="fine_tuning",
             reason=(
-                "Чтобы модель писала в вашем стиле, ей нужно показать примеры "
-                "этого стиля во время обучения — это именно то, для чего нужен "
-                "fine-tuning."
+                "For the model to write in your style, it needs to be shown "
+                "examples of that style during training - that is exactly what "
+                "fine-tuning is for."
             ),
         )
 
@@ -75,8 +75,9 @@ def recommend_approach(
         return ApproachRecommendation(
             approach="rag",
             reason=(
-                "У вас есть документы/база знаний — модель будет отвечать по "
-                "ним напрямую, без обучения. Быстрее и дешевле, чем fine-tuning."
+                "You have documents / a knowledge base - the model will answer "
+                "from them directly, without training. Faster and cheaper than "
+                "fine-tuning."
             ),
         )
 
@@ -84,9 +85,9 @@ def recommend_approach(
         return ApproachRecommendation(
             approach="rag_few_shot",
             reason=(
-                f"У вас {qa_pair_count} примеров — этого мало для качественного "
-                "fine-tuning. Используем RAG и добавим ваши примеры прямо в "
-                "подсказку модели (few-shot), чтобы она отвечала в похожем стиле."
+                f"You have {qa_pair_count} examples - too few for good "
+                "fine-tuning. We'll use RAG and add your examples directly to "
+                "the model's prompt (few-shot) so it answers in a similar style."
             ),
         )
 
@@ -94,13 +95,13 @@ def recommend_approach(
         return ApproachRecommendation(
             approach="rag",
             reason=(
-                f"У вас {qa_pair_count} примеров вопрос-ответ — этого достаточно, "
-                "но для задачи \"отвечать по фактам\" RAG всё ещё быстрее и проще: "
-                "не нужно переобучать модель, если факты изменятся."
+                f"You have {qa_pair_count} question-answer examples - that's "
+                "enough, but for an \"answer from facts\" task RAG is still "
+                "faster and simpler: no retraining when the facts change."
             ),
         )
 
     return ApproachRecommendation(
         approach="rag",
-        reason="Данных пока нет — начнём с пустой базы знаний, вы сможете добавить документы позже.",
+        reason="No data yet - we'll start with an empty knowledge base; you can add documents later.",
     )

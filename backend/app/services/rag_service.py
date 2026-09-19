@@ -456,7 +456,7 @@ class RAGService:
         prompting the caller layers in separately.
         """
         collection = await self.get_collection(collection_id, org_id)
-        text = "\n\n".join(f"Вопрос: {q}\nОтвет: {a}" for q, a in pairs)
+        text = "\n\n".join(f"Q: {q}\nA: {a}" for q, a in pairs)
 
         dest_dir = self._org_collection_dir(org_id, collection_id)
         safe_name = _safe_filename(filename)

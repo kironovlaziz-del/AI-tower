@@ -76,7 +76,8 @@
       "users": "Users",
       "deployments": "Deployments",
       "playground": "Playground",
-      "discovery": "Network Discovery"
+      "discovery": "Network Discovery",
+      "simple_mode": "Simple Mode (guided)"
     },
     "logout": "Sign out",
     "role_admin": "admin",
@@ -1081,7 +1082,8 @@
     "no_data_pasted_filename": "pasted-text",
     "no_data_files_added": "{{count}} document(s) added",
     "no_data_rag_hint": "This is called RAG — the model answers from your documents without any training. Fast, cheap, accurate.",
-    "no_data_reason": "You have documents/a knowledge base — the model will answer directly from them, without training."
+    "no_data_reason": "You have documents/a knowledge base — the model will answer directly from them, without training.",
+    "exit_to_main": "Back to main"
   },
   "discovery": {
     "title": "Network Discovery",

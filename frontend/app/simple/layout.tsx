@@ -42,6 +42,9 @@ export default function SimpleModeLayout({ children }: { children: React.ReactNo
             {t("auth.brand")}
           </Link>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <Link href="/dashboard" className="btn btn-sm">
+              ← {t("simple_mode.exit_to_main")}
+            </Link>
             <LanguageSwitcher />
             <span className="hint-text">👤 {user.name}</span>
             <Link href="/simple/settings" title={t("simple_mode.settings")} style={{ fontSize: 18 }}>
