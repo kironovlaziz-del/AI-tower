@@ -27,8 +27,8 @@ async def create_incident(
     )
     await notification_service.notify(
         db, current_user.org_id, "incident_created",
-        f"Новый инцидент: {incident.category}",
-        f"Серьёзность: {incident.severity}\n{incident.summary}",
+        f"New incident: {incident.category}",
+        f"Severity: {incident.severity}\n{incident.summary}",
         {"incident_id": incident.id},
     )
     return incident

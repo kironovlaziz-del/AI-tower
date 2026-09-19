@@ -34,8 +34,8 @@ async def create_request(
     if ai_request.status == "blocked":
         await notification_service.notify(
             db, current_user.org_id, "request_blocked",
-            "Запрос заблокирован Prompt Firewall",
-            f"Запрос #{ai_request.id} ({ai_request.purpose}) заблокирован по блок-листу политики.",
+            "Request blocked by Prompt Firewall",
+            f"Request #{ai_request.id} ({ai_request.purpose}) was blocked by the policy blocklist.",
             {"request_id": ai_request.id},
         )
     return ai_request

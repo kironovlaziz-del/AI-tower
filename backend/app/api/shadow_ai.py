@@ -74,8 +74,8 @@ async def create_sighting(
     )
     await notification_service.notify(
         db, current_user.org_id, "shadow_ai_reported",
-        f"Замечено несанкционированное использование AI: {sighting.tool_name}",
-        f"Источник: {sighting.detected_via}. Требует разбора в Shadow AI Monitor.",
+        f"Unsanctioned AI usage detected: {sighting.tool_name}",
+        f"Source: {sighting.detected_via}. Needs review in Shadow AI Monitor.",
         {"sighting_id": sighting.id},
     )
     return sighting

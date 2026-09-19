@@ -1,4 +1,5 @@
 from pydantic import BaseModel, field_validator
+from app.core.ssrf import validate_webhook_url, WebhookURLError
 from datetime import datetime
 from typing import List, Optional, Literal
 
@@ -37,11 +38,10 @@ class NotificationChannelCreate(BaseModel):
             # cannot coexist as two channels.
             v = v.lower()
         elif channel_type == "webhook":
-            if not (v.startswith("http://") or v.startswith("https://")):
-                raise ValueError("webhook URL must start with http:// or https://")
-            # Strip trailing slash so /hook and /hook/ are the same target.
-            if v.endswith("/") and v.count("/") > 2:
-                v = v.rstrip("/")
+            try:
+                v = validate_webhook_url(v)
+            except WebhookURLError as exc:
+                raise ValueError(str(exc))
         return v
 
 
@@ -49,6 +49,23 @@ class NotificationChannelUpdate(BaseModel):
     target: Optional[str] = None
     events: Optional[List[str]] = None
     enabled: Optional[bool] = None
+
+    @field_validator("target")
+    @classmethod
+    def _validate_update_target(cls, v):
+        # An update can change a webhook target, so it must be re-checked -
+        # otherwise a benign channel could be repointed at an internal
+        # address. Only webhook-shaped values (http/https) are guarded
+        # here; an email target is left as-is.
+        if v is None:
+            return v
+        v = v.strip()
+        if v.startswith("http://") or v.startswith("https://"):
+            try:
+                v = validate_webhook_url(v)
+            except WebhookURLError as exc:
+                raise ValueError(str(exc))
+        return v
 
 
 class NotificationChannelOut(BaseModel):

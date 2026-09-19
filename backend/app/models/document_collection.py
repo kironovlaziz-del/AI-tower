@@ -30,7 +30,7 @@ class DocumentCollection(Base):
     description = Column(Text)
     embedding_provider = Column(String(30), nullable=False, default="tfidf")
     vectorizer_path = Column(String(500))
-    # Simple Mode wizard screen 7 ("Характер модели"), converted to plain
+    # Simple Mode wizard screen 7 ("Model personality"), converted to plain
     # text and stored here so it survives past the wizard session: any
     # future chat against this collection (from the wizard's own test
     # screen, the Simple Mode dashboard, or later an advanced-mode caller)

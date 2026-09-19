@@ -19,20 +19,20 @@ from typing import Any, Dict, List, Optional
 CPU_SAFE_MODELS: List[Dict[str, Any]] = [
     {
         "id": "google/bert_uncased_L-2_H-128_A-2",
-        "label": "BERT-Tiny Google (~4M параметров)",
-        "note": "Самый быстрый вариант на CPU - минуты, а не часы, на небольших датасетах. Официальный релиз Google с полным набором файлов токенизатора.",
+        "label": "BERT-Tiny Google (~4M params)",
+        "note": "Fastest option on CPU - minutes, not hours, on small datasets. Official Google release with a complete tokenizer file set.",
         "estimated_vram_gb": 0.3,
     },
     {
         "id": "microsoft/MiniLM-L12-H384-uncased",
-        "label": "MiniLM-L12 (~33M параметров)",
-        "note": "Компромисс скорость/качество, всё ещё практично на CPU.",
+        "label": "MiniLM-L12 (~33M params)",
+        "note": "A speed/quality trade-off, still practical on CPU.",
         "estimated_vram_gb": 1.0,
     },
     {
         "id": "distilbert-base-uncased",
-        "label": "DistilBERT (~66M параметров)",
-        "note": "Заметно медленнее на CPU - рассчитывайте на десятки минут - часы даже на маленьком датасете.",
+        "label": "DistilBERT (~66M params)",
+        "note": "Noticeably slower on CPU - expect tens of minutes to hours even on a small dataset.",
         "estimated_vram_gb": 2.0,
     },
 ]
@@ -40,14 +40,14 @@ CPU_SAFE_MODELS: List[Dict[str, Any]] = [
 GPU_ADDITIONAL_MODELS: List[Dict[str, Any]] = [
     {
         "id": "bert-base-uncased",
-        "label": "BERT-base (~110M параметров)",
-        "note": "Требует GPU для практичного времени обучения.",
+        "label": "BERT-base (~110M params)",
+        "note": "Requires a GPU for practical training time.",
         "estimated_vram_gb": 3.0,
     },
     {
         "id": "roberta-base",
-        "label": "RoBERTa-base (~125M параметров)",
-        "note": "Требует GPU для практичного времени обучения.",
+        "label": "RoBERTa-base (~125M params)",
+        "note": "Requires a GPU for practical training time.",
         "estimated_vram_gb": 3.5,
     },
 ]
@@ -57,20 +57,20 @@ GPU_ADDITIONAL_MODELS: List[Dict[str, Any]] = [
 GENERATION_MODELS: List[Dict[str, Any]] = [
     {
         "id": "sshleifer/tiny-gpt2",
-        "label": "Tiny GPT-2 (~2M параметров)",
-        "note": "Игрушечная модель, годится только для проверки пайплайна.",
+        "label": "Tiny GPT-2 (~2M params)",
+        "note": "A toy model, only good for smoke-testing the pipeline.",
         "estimated_vram_gb": 0.2,
     },
     {
         "id": "distilgpt2",
-        "label": "DistilGPT-2 (~82M параметров)",
-        "note": "Быстрая генерация на CPU; качество ниже, чем у полноценного GPT-2.",
+        "label": "DistilGPT-2 (~82M params)",
+        "note": "Fast generation on CPU; lower quality than full GPT-2.",
         "estimated_vram_gb": 2.5,
     },
     {
         "id": "gpt2",
-        "label": "GPT-2 (~124M параметров)",
-        "note": "Базовый GPT-2; для практичного времени обучения нужен GPU.",
+        "label": "GPT-2 (~124M params)",
+        "note": "Base GPT-2; needs a GPU for practical training time.",
         "estimated_vram_gb": 4.0,
     },
 ]
@@ -140,8 +140,8 @@ def check_model_fit(
             return {
                 "allowed": True,
                 "reason": (
-                    "Модель не из курируемого списка - объём необходимой "
-                    "VRAM неизвестен, возможен OOM во время обучения."
+                    "Model is not from the curated list - required VRAM is "
+                    "unknown, an out-of-memory error during training is possible."
                 ),
             }
         return {

@@ -44,7 +44,7 @@ class User(Base):
     # regular user may grow into wanting the full console. NULL means "not
     # chosen yet" - the frontend shows a one-time chooser after login and
     # persists the answer here, per the Simple Mode plan's own framing
-    # ("выбор при логине") - it must be remembered, not re-asked every time.
+    # (choice made at login) - it must be remembered, not re-asked every time.
     ui_mode = Column(String(20))  # "simple" | "advanced" | NULL (unset)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

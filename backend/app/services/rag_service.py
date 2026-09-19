@@ -143,7 +143,7 @@ class TfidfEmbeddingProvider(EmbeddingProvider):
         # Character n-grams (within word boundaries) rather than whole-word
         # tokens: this project's users are largely Russian/Uzbek-speaking
         # (see the Simple Mode wizard's own examples), and those are
-        # morphologically rich languages - "товар" vs "товара" are
+        # morphologically rich languages - inflected word forms are
         # different word forms that a word-level TF-IDF (with no
         # stemmer/lemmatizer) would treat as entirely unrelated tokens,
         # silently returning zero matches for a question phrased in a

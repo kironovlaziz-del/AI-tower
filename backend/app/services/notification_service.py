@@ -19,6 +19,8 @@ from email.mime.text import MIMEText
 from typing import Any, Dict, List, Optional
 
 import httpx
+
+from app.core.ssrf import assert_safe_webhook_target, WebhookURLError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
@@ -50,6 +52,14 @@ def _send_email(target: str, subject: str, message: str) -> None:
 
 
 def _send_webhook(target: str, subject: str, message: str, metadata: Optional[Dict[str, Any]]) -> None:
+    # SSRF guard: resolve and check the target right before sending, so a
+    # host that resolves to an internal address (or was repointed after
+    # creation) is refused even though it passed create-time validation.
+    try:
+        assert_safe_webhook_target(target)
+    except WebhookURLError:
+        logger.warning("Refusing webhook to unsafe target %s (SSRF guard)", target)
+        return
     try:
         with httpx.Client(timeout=10.0) as client:
             client.post(target, json={"subject": subject, "message": message, "metadata": metadata or {}})
@@ -221,7 +231,7 @@ class NotificationChannelService:
         channel = await self.get_channel(channel_id, org_id)
         _dispatch(
             channel,
-            "AI Control Tower - тестовое уведомление",
-            "Если вы это видите, канал уведомлений настроен верно.",
+            "AI Control Tower - test notification",
+            "If you can see this, the notification channel is configured correctly.",
             {"test": True},
         )

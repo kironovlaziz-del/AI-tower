@@ -14,7 +14,7 @@ class ParseUploadResponse(BaseModel):
     detected_columns: Optional[List[str]] = None
     preview_text: Optional[str] = None
     # Convenience: the same recommendation Phase B's endpoint would give
-    # for this exact data shape, so the wizard's screen 6 "Продолжить" can
+    # for this exact data shape, so the wizard's screen 6 "Continue" can
     # act immediately without a second round trip.
     recommended_approach: str
     recommended_reason: str

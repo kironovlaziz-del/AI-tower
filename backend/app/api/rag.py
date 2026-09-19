@@ -35,7 +35,7 @@ async def recommend_approach_endpoint(
     Simple Mode wizard step (screen 6, right after data parsing): the
     system decides RAG vs fine-tuning on its own from the task type and
     data shape, per the plan's design principle - the person never sees
-    this as a choice, only the "Продолжить" button.
+    this as a choice, only the "Continue" button.
     """
     result = recommend_approach(data.task_type, data.has_documents, data.qa_pair_count)
     return ApproachRecommendationResponse(approach=result.approach, reason=result.reason)

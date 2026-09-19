@@ -99,12 +99,12 @@ async def preview_chat(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Wizard screen 8 ("Попробуйте модель") - a direct, ungrounded call to
+    Wizard screen 8 ("Try the model") - a direct, ungrounded call to
     the chosen provider using only the screen-7 personality prompt, with
     no RAG retrieval and no fine-tuned model (there isn't one yet at this
     point in the wizard). This previews tone/personality only, not
-    factual grounding - the wizard's own copy ("Задайте вопрос — посмотрите,
-    как ответит") does not promise grounded answers at this stage either.
+    factual grounding - the wizard's own copy ("Ask a question - see how it
+    answers") does not promise grounded answers at this stage either.
     """
     result = await db.execute(
         select(AIProvider).where(
