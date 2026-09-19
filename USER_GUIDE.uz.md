@@ -15,7 +15,7 @@ joylashtirish va dasturlash uchun [README.md](README.md) ga qarang.
    tugmasini bosib uni yarating — birinchi foydalanuvchi **admin**
    bo‘ladi.
 3. Kirish uchun tashkilotingizning qisqa identifikatorini (masalan,
-   `acme`), **elektron pochta** va **parol**ingizni kiriting.
+   `corp`), **elektron pochta** va **parol**ingizni kiriting.
 4. Kirish sahifasi yuqorisidagi **Language** tanlagichi orqali istalgan
    vaqtda English va O‘zbekcha o‘rtasida almashishingiz mumkin.
 
@@ -44,7 +44,7 @@ Platforma promptlarni AI provayderga yuborishidan oldin ulanish qo‘shing.
 
 1. Yon menyu → **Connections**.
 2. **New provider** → turini tanlang (OpenAI, Anthropic, Azure OpenAI
-   yoki Custom), nom bering va API kalitni joylashtiring.
+   yoki Shaxsiy), nom bering va API kalitni joylashtiring.
 3. Kalit **shifrlangan holda saqlanadi** va boshqa hech qachon
    ko‘rsatilmaydi — interfeys faqat kalit o‘rnatilgan-o‘rnatilmaganini
    bildiradi.
@@ -143,7 +143,7 @@ Katalog aniqlangan domen qanday qayta ishlanishini belgilaydi.
 
 Yon menyu → **Shadow AI Monitor**. Har bir yozuv vositani, manbani
 (brauzer kengaytmasi, endpoint agenti, lokal jarayon/tarmoq/model fayli
-yoki qo‘lda), ma’lum bo‘lsa xodim haqidagi maslahatni, holatni va
+yoki qo‘lda), ma’lum bo‘lsa xodim haqidagi malumotni, holatni va
 takroriy aniqlashlar uchun "seen N times" hisoblagichini ko‘rsatadi. Har
 biri uchun siz:
 
@@ -203,7 +203,7 @@ bo‘ladi.
 (masalan, Active Directory’dan foydalanuvchilarni o‘qish) **Connect**
 tugmasini bosing va aynan shu xizmat uchun faqat o‘qish huquqli hisob
 ma’lumotlarini kiriting. Agar xizmat turi uchun hali konnektor bo‘lmasa,
-platforma ulanganday ko‘rsatmaydi, balki buni halol aytadi. Keraksiz
+platforma ulanganday ko‘rsatmaydi, balki buni aniq aytadi. Keraksiz
 xizmatlarni **Ignore** qilishingiz ham mumkin.
 
 ---
