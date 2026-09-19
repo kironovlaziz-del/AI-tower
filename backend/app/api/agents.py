@@ -13,7 +13,7 @@ from app.schemas.agent import (
     AgentCreate, AgentUpdate, AgentOut, AgentCreated,
     AgentKillRequest, AgentKillResponse,
     DelegateRequest, DelegateResponse, ChainOut, ChainDetail, HopOut,
-    ActionCheckRequest, ActionCheckResponse, ActionRecordRequest, ActionOut,
+    ActionCheckRequest, ActionCheckResponse, ActionRecordRequest, ActionDenyRequest, ActionOut,
     AgentPolicyCreate, AgentPolicyOut, AgentIncidentOut,
 )
 from app.services.agent_registry import AgentRegistry
@@ -250,14 +250,44 @@ async def record_action_endpoint(
 async def list_actions(
     chain_id: Optional[int] = None,
     agent_id: Optional[int] = None,
+    result: Optional[str] = None,
     pagination: PaginationParams = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     items, total = await AgentAudit(db).list_actions(
-        current_user.org_id, chain_id, agent_id, pagination.skip, pagination.limit
+        current_user.org_id, chain_id, agent_id, result, pagination.skip, pagination.limit
     )
     return Page(items=items, total=total, skip=pagination.skip, limit=pagination.limit)
+
+
+@router.post("/actions/{action_id}/approve", response_model=ActionOut)
+async def approve_action(
+    action_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.admin, UserRole.approver)),
+):
+    action = await AgentAudit(db).approve_action(action_id, current_user.org_id)
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "agent_action", action_id, "approved",
+        {"tool": action.tool_name},
+    )
+    return action
+
+
+@router.post("/actions/{action_id}/deny", response_model=ActionOut)
+async def deny_action(
+    action_id: int,
+    data: ActionDenyRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.admin, UserRole.approver)),
+):
+    action = await AgentAudit(db).deny_action(action_id, current_user.org_id, data.reason)
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "agent_action", action_id, "denied",
+        {"tool": action.tool_name, "reason": data.reason},
+    )
+    return action
 
 
 # ========================= Agent policies =========================

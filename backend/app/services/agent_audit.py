@@ -148,9 +148,64 @@ class AgentAudit:
         await self.db.refresh(action)
         return action
 
+    async def _get_action(self, action_id: int, org_id: int) -> AgentAction:
+        result = await self.db.execute(
+            select(AgentAction).where(
+                AgentAction.id == action_id, AgentAction.org_id == org_id
+            )
+        )
+        action = result.scalar_one_or_none()
+        if not action:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action not found")
+        return action
+
+    async def approve_action(self, action_id: int, org_id: int) -> AgentAction:
+        """
+        Approve a pending action so the agent may proceed. Only actions in
+        'pending_approval' can be approved; approving flips the verdict to
+        'allowed' and records who/when in the reason. Anything else is a
+        409 (you can't approve an already-decided action).
+        """
+        action = await self._get_action(action_id, org_id)
+        if action.policy_check_result != "pending_approval":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Action is '{action.policy_check_result}', not pending approval",
+            )
+        action.policy_check_result = "allowed"
+        action.reason = (action.reason or "") + " | approved by human reviewer"
+        await self.db.commit()
+        await self.db.refresh(action)
+        return action
+
+    async def deny_action(self, action_id: int, org_id: int, reason: Optional[str]) -> AgentAction:
+        """Deny a pending action. Flips it to 'denied' and raises a
+        policy_violation incident so the refusal is on the audit trail."""
+        action = await self._get_action(action_id, org_id)
+        if action.policy_check_result != "pending_approval":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Action is '{action.policy_check_result}', not pending approval",
+            )
+        action.policy_check_result = "denied"
+        action.reason = (action.reason or "") + f" | denied by human reviewer: {reason or 'no reason given'}"
+        self.db.add(
+            AgentIncident(
+                org_id=org_id,
+                chain_id=action.chain_id,
+                agent_id=action.agent_id,
+                incident_type="policy_violation",
+                severity="high",
+                details={"tool": action.tool_name, "reason": "denied at human approval"},
+            )
+        )
+        await self.db.commit()
+        await self.db.refresh(action)
+        return action
+
     async def list_actions(
         self, org_id: int, chain_id: Optional[int] = None, agent_id: Optional[int] = None,
-        skip: int = 0, limit: int = 50,
+        result_filter: Optional[str] = None, skip: int = 0, limit: int = 50,
     ) -> Tuple[List[AgentAction], int]:
         from sqlalchemy import func as sqlfunc
         base = select(AgentAction).where(AgentAction.org_id == org_id)
@@ -158,6 +213,8 @@ class AgentAudit:
             base = base.where(AgentAction.chain_id == chain_id)
         if agent_id is not None:
             base = base.where(AgentAction.agent_id == agent_id)
+        if result_filter is not None:
+            base = base.where(AgentAction.policy_check_result == result_filter)
         total = await self.db.scalar(select(sqlfunc.count()).select_from(base.subquery()))
         result = await self.db.execute(
             base.order_by(AgentAction.created_at.desc()).offset(skip).limit(limit)

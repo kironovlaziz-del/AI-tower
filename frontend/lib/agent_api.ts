@@ -77,9 +77,19 @@ export async function getChain(id: number) {
 }
 
 // ---- Actions ----
-export async function listAgentActions(params?: { chain_id?: number; agent_id?: number }) {
+export async function listAgentActions(params?: { chain_id?: number; agent_id?: number; result?: string }) {
   const { data } = await api.get<Page<AgentActionT>>("/agents/actions/", { params });
   return items(data);
+}
+
+export async function approveAgentAction(actionId: number) {
+  const { data } = await api.post<AgentActionT>(`/agents/actions/${actionId}/approve`);
+  return data;
+}
+
+export async function denyAgentAction(actionId: number, reason?: string) {
+  const { data } = await api.post<AgentActionT>(`/agents/actions/${actionId}/deny`, { reason });
+  return data;
 }
 
 // ---- Policies ----

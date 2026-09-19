@@ -80,7 +80,8 @@
       "discovery": "Tarmoq kashfiyoti",
       "simple_mode": "Oddiy rejim (yordamchi)",
       "agents": "Agentlar",
-      "agent_chains": "Delegatsiya zanjirlari"
+      "agent_chains": "Delegatsiya zanjirlari",
+      "agent_approvals": "Tasdiqlash kutilmoqda"
     },
     "logout": "Chiqish",
     "role_admin": "administrator",
@@ -1219,5 +1220,18 @@
     "tl_tool": "Vosita",
     "tl_result": "Natija",
     "tl_reason": "Sabab"
+  },
+  "agent_approvals": {
+    "title": "Agent amallarini tasdiqlash",
+    "hint": "Siyosat tomonidan agent bajarishidan oldin inson tasdig'i talab qilinadigan amallar.",
+    "pending": "Tasdiqlash kutilmoqda",
+    "empty": "Tasdiqlashni kutayotgan amal yo'q.",
+    "col_time": "Vaqt",
+    "col_agent": "Agent",
+    "col_tool": "Vosita",
+    "col_reason": "Sabab",
+    "approve": "Tasdiqlash",
+    "deny": "Rad etish",
+    "deny_prompt": "Ushbu amalni rad etish sababi (ixtiyoriy):"
   }
 }

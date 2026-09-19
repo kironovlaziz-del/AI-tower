@@ -47,6 +47,7 @@ const NAV = [
     items: [
       { href: "/agents", labelKey: "sidebar.nav.agents" },
       { href: "/agent-chains", labelKey: "sidebar.nav.agent_chains" },
+      { href: "/agent-approvals", labelKey: "sidebar.nav.agent_approvals", adminOnly: true },
     ],
   },
   {

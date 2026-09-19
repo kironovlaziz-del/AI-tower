@@ -149,6 +149,10 @@ class ActionRecordRequest(BaseModel):
     duration_ms: Optional[int] = None
 
 
+class ActionDenyRequest(BaseModel):
+    reason: Optional[str] = None
+
+
 class ActionOut(BaseModel):
     id: int
     org_id: int

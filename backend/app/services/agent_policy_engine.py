@@ -74,38 +74,43 @@ class ChainView:
 _MODEL_INVOKING_TOOLS = {"openai.chat", "anthropic.messages", "model.invoke", "llm.chat"}
 
 
-def evaluate_custom_rule(rule: Dict[str, Any], ctx: ActionContext) -> bool:
+def evaluate_custom_rule(rule: Dict[str, Any], ctx: ActionContext) -> str:
     """
-    Evaluate one custom JSON policy rule against the action. Returns True
-    if the action SATISFIES the rule (is allowed by it), False if it
-    violates it.
+    Evaluate one custom JSON policy rule against the action. Returns one
+    of: "ok" (rule satisfied), "deny" (rule violated), or "approval"
+    (rule requires human approval before the action may proceed).
 
     Supported rule shapes (intentionally small and explicit - not a
     turing-complete expression evaluator, which would be a security and
     maintenance hazard):
 
       {"deny_tools": ["stripe.charge", ...]}
-          -> violated if the action's tool is in the list
+          -> "deny" if the action's tool is in the list
       {"allow_only_tools": ["openai.chat", ...]}
-          -> violated if the action's tool is NOT in the list
+          -> "deny" if the action's tool is NOT in the list
       {"deny_action_types": ["api_request"]}
-          -> violated if action_type is in the list
+          -> "deny" if action_type is in the list
+      {"require_approval_tools": ["stripe.charge", "email.send", ...]}
+          -> "approval" if the action's tool is in the list (the action
+             is otherwise permitted, but a human must approve it first)
 
-    Unknown rule keys are ignored (fail-open for the rule itself), so a
-    typo can't silently block everything - but see the engine, which
-    treats a rule returning False as a denial.
+    Unknown rule keys are ignored, so a typo can't silently block or gate
+    everything.
     """
     tool = ctx.tool_name
     if "deny_tools" in rule:
         if tool in set(rule.get("deny_tools") or []):
-            return False
+            return "deny"
     if "allow_only_tools" in rule:
         if tool not in set(rule.get("allow_only_tools") or []):
-            return False
+            return "deny"
     if "deny_action_types" in rule:
         if ctx.action_type in set(rule.get("deny_action_types") or []):
-            return False
-    return True
+            return "deny"
+    if "require_approval_tools" in rule:
+        if tool in set(rule.get("require_approval_tools") or []):
+            return "approval"
+    return "ok"
 
 
 def check_action(
@@ -143,18 +148,32 @@ def check_action(
             "capability_escalation",
         )
 
-    # 5. custom policies (can only further restrict)
+    # 5. custom policies (can only further restrict). A deny wins
+    # outright; an approval requirement is remembered and applied only if
+    # nothing denies the action - so "deny" always beats "needs approval".
+    approval_policy_id = None
+    approval_reason = None
     for policy in custom_policies or []:
         rules = policy.get("rules") or {}
         # rules can be a single rule dict or a list of them
         rule_list = rules if isinstance(rules, list) else [rules]
         for rule in rule_list:
-            if not evaluate_custom_rule(rule, ctx):
+            verdict = evaluate_custom_rule(rule, ctx)
+            if verdict == "deny":
                 return Decision(
                     DENIED,
                     f"Blocked by policy '{policy.get('name', policy.get('id'))}'",
                     "policy_violation",
                     matched_policy_id=policy.get("id"),
                 )
+            if verdict == "approval" and approval_policy_id is None:
+                approval_policy_id = policy.get("id")
+                approval_reason = (
+                    f"Action requires human approval per policy "
+                    f"'{policy.get('name', policy.get('id'))}'"
+                )
+
+    if approval_policy_id is not None:
+        return Decision(PENDING_APPROVAL, approval_reason, None, matched_policy_id=approval_policy_id)
 
     return Decision(ALLOWED, "Action permitted")

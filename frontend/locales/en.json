@@ -80,7 +80,8 @@
       "discovery": "Network Discovery",
       "simple_mode": "Simple Mode (guided)",
       "agents": "Agents",
-      "agent_chains": "Delegation Chains"
+      "agent_chains": "Delegation Chains",
+      "agent_approvals": "Pending Approvals"
     },
     "logout": "Sign out",
     "role_admin": "admin",
@@ -1219,5 +1220,18 @@
     "tl_tool": "Tool",
     "tl_result": "Result",
     "tl_reason": "Reason"
+  },
+  "agent_approvals": {
+    "title": "Agent Action Approvals",
+    "hint": "Actions that policy has gated for human approval before an agent may run them.",
+    "pending": "Pending approval",
+    "empty": "Nothing waiting for approval.",
+    "col_time": "Time",
+    "col_agent": "Agent",
+    "col_tool": "Tool",
+    "col_reason": "Reason",
+    "approve": "Approve",
+    "deny": "Deny",
+    "deny_prompt": "Reason for denying this action (optional):"
   }
 }
