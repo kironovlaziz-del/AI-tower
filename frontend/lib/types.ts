@@ -137,6 +137,23 @@ export type ShadowSightingStatus =
   | "dismissed"
   | "registered";
 
+export interface ServiceConnection {
+  id: number;
+  org_id: number;
+  discovered_service_id: number;
+  service_type: string;
+  host: string;
+  port?: number | null;
+  bind_dn?: string | null;
+  base_dn?: string | null;
+  username?: string | null;
+  info?: Record<string, unknown> | null;
+  last_verified_at?: string | null;
+  last_error?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
 export interface DiscoveredService {
   id: number;
   org_id: number;

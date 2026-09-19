@@ -8,8 +8,10 @@ import {
   listDiscoveredServices,
   connectDiscoveredService,
   ignoreDiscoveredService,
+  getServiceConnection,
+  reverifyServiceConnection,
 } from "@/lib/api";
-import type { DiscoveredService } from "@/lib/types";
+import type { DiscoveredService, ServiceConnection } from "@/lib/types";
 
 const SERVICE_ICONS: Record<string, string> = {
   dns: "🌐",
@@ -41,6 +43,34 @@ export default function DiscoveryPage() {
   const [services, setServices] = useState<DiscoveredService[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [connDetails, setConnDetails] = useState<Record<number, ServiceConnection | null>>({});
+
+  async function toggleDetails(serviceId: number) {
+    if (expandedId === serviceId) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(serviceId);
+    if (!(serviceId in connDetails)) {
+      try {
+        const conn = await getServiceConnection(serviceId);
+        setConnDetails((m) => ({ ...m, [serviceId]: conn }));
+      } catch {
+        setConnDetails((m) => ({ ...m, [serviceId]: null }));
+      }
+    }
+  }
+
+  async function handleReverify(serviceId: number) {
+    setBusyId(serviceId);
+    try {
+      const conn = await reverifyServiceConnection(serviceId);
+      setConnDetails((m) => ({ ...m, [serviceId]: conn }));
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   // Connect modal
   const [connectTarget, setConnectTarget] = useState<DiscoveredService | null>(null);
@@ -182,7 +212,8 @@ export default function DiscoveryPage() {
                   </tr>
                 )}
                 {services.map((svc) => (
-                  <tr key={svc.id}>
+                  <React.Fragment key={svc.id}>
+                  <tr>
                     <td>
                       <div style={{ fontWeight: 600 }}>
                         {SERVICE_ICONS[svc.service_type] || "❓"}{" "}
@@ -216,6 +247,15 @@ export default function DiscoveryPage() {
                     </td>
                     <td style={{ width: "1%", whiteSpace: "nowrap", textAlign: "right" }}>
                       <div style={{ display: "inline-flex", gap: 6, justifyContent: "flex-end" }}>
+                        {svc.connect_status === "connected" && (
+                          <button
+                            className="btn btn-sm"
+                            onClick={() => toggleDetails(svc.id)}
+                            style={{ padding: "4px 8px", fontSize: "11px" }}
+                          >
+                            {t("discovery.details_btn")}
+                          </button>
+                        )}
                         {svc.connect_status !== "connected" &&
                           svc.connect_status !== "ignored" && (
                             <button
@@ -240,6 +280,62 @@ export default function DiscoveryPage() {
                       </div>
                     </td>
                   </tr>
+                  {expandedId === svc.id && (
+                    <tr>
+                      <td colSpan={5} style={{ background: "var(--bg-app, #f5f6f8)" }}>
+                        {(() => {
+                          const conn = connDetails[svc.id];
+                          if (conn === undefined) {
+                            return <span className="hint-text">{t("common.loading")}</span>;
+                          }
+                          if (conn === null) {
+                            return <span className="hint-text">{t("discovery.conn_none")}</span>;
+                          }
+                          const info = (conn.info || {}) as Record<string, unknown>;
+                          return (
+                            <div style={{ fontSize: "12px", display: "flex", flexDirection: "column", gap: 4, padding: "4px 0" }}>
+                              {conn.bind_dn && (
+                                <div><strong>{t("discovery.conn_bind_dn")}:</strong> <span className="mono">{conn.bind_dn}</span></div>
+                              )}
+                              {conn.base_dn && (
+                                <div><strong>{t("discovery.conn_base_dn")}:</strong> <span className="mono">{conn.base_dn}</span></div>
+                              )}
+                              {typeof info.person_count === "number" && (
+                                <div><strong>{t("discovery.conn_person_count")}:</strong> {String(info.person_count)}{info.person_count_capped ? "+" : ""}</div>
+                              )}
+                              {info.reachable === true && (
+                                <div><strong>{t("discovery.conn_reachable")}:</strong> ✅</div>
+                              )}
+                              {conn.last_verified_at && (
+                                <div>
+                                  <strong>{t("discovery.conn_last_verified")}:</strong>{" "}
+                                  {new Date(conn.last_verified_at).toLocaleString(i18n.language)}
+                                </div>
+                              )}
+                              {conn.last_error && (
+                                <div style={{ color: "var(--risk-critical, #c1352f)" }}>
+                                  <strong>{t("discovery.conn_error")}:</strong> {conn.last_error}
+                                </div>
+                              )}
+                              <div style={{ marginTop: 6 }}>
+                                <button
+                                  className="btn btn-sm"
+                                  disabled={busyId === svc.id}
+                                  onClick={() => handleReverify(svc.id)}
+                                  style={{ padding: "4px 10px", fontSize: "11px" }}
+                                >
+                                  {busyId === svc.id
+                                    ? t("common.loading")
+                                    : t("discovery.reverify_btn")}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>

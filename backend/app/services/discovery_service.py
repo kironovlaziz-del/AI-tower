@@ -6,11 +6,16 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.discovered_service import DiscoveredService
+from app.models.service_connection import ServiceConnection
 from app.schemas.discovery import (
     DiscoveredServiceIn,
     ServiceConnectRequest,
 )
-from app.services.discovery_connect_handlers import CONNECT_HANDLERS, ServiceConnectError
+from app.services.discovery_connect_handlers import (
+    CONNECT_HANDLERS,
+    ServiceConnectError,
+    verify_connection,
+)
 
 
 class DiscoveryService:
@@ -161,3 +166,45 @@ class DiscoveryService:
         await self.db.commit()
         await self.db.refresh(svc)
         return svc
+
+    async def get_connection(self, service_id: int, org_id: int):
+        """
+        Return the ServiceConnection for a discovered service, or None if
+        it has never been connected. Used by the UI to show connection
+        details (bind DN, what the one-time read found, last verification
+        time) without ever exposing the stored secret.
+        """
+        # Ensure the discovered service exists and belongs to this org.
+        await self._get(service_id, org_id)
+        result = await self.db.execute(
+            select(ServiceConnection).where(
+                ServiceConnection.discovered_service_id == service_id,
+                ServiceConnection.org_id == org_id,
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def reverify_connection(self, service_id: int, org_id: int):
+        """Re-check a single stored connection (manual 'Re-verify' button).
+        Returns the updated ServiceConnection, or None if the service was
+        never connected."""
+        conn = await self.get_connection(service_id, org_id)
+        if conn is None:
+            return None
+        await verify_connection(conn)
+        await self.db.commit()
+        await self.db.refresh(conn)
+        return conn
+
+    async def reverify_all(self):
+        """Re-check EVERY stored connection across all orgs. Called by the
+        scheduled Celery beat task. Commits once at the end. Returns a
+        (checked, ok, failed) tuple for the task log."""
+        result = await self.db.execute(select(ServiceConnection))
+        conns = list(result.scalars().all())
+        ok = 0
+        for conn in conns:
+            if await verify_connection(conn):
+                ok += 1
+        await self.db.commit()
+        return len(conns), ok, len(conns) - ok

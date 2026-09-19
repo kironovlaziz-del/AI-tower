@@ -9,6 +9,7 @@ from app.schemas.discovery import (
     DiscoveryReportResponse,
     DiscoveredServiceOut,
     ServiceConnectRequest,
+    ServiceConnectionOut,
     ServiceIgnoreRequest,
 )
 from app.schemas.pagination import Page
@@ -91,3 +92,38 @@ async def ignore_discovered(
         {"reason": data.reason},
     )
     return svc
+
+
+@router.get("/{service_id}/connection", response_model=Optional[ServiceConnectionOut])
+async def get_service_connection(
+    service_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.admin)),
+):
+    """
+    Return the credentialed connection details for a discovered service
+    (bind DN, what the one-time read found, last verification), or null
+    if it was never connected. The stored secret is never included.
+    """
+    service = DiscoveryService(db)
+    return await service.get_connection(service_id, current_user.org_id)
+
+
+@router.post("/{service_id}/reverify", response_model=Optional[ServiceConnectionOut])
+async def reverify_service_connection(
+    service_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.admin)),
+):
+    """
+    Manually re-check a stored connection using its saved credentials.
+    Returns the updated connection (with refreshed last_verified_at /
+    last_error), or null if the service was never connected.
+    """
+    service = DiscoveryService(db)
+    conn = await service.reverify_connection(service_id, current_user.org_id)
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "discovered_service", service_id, "reverified",
+        {"ok": conn.last_error is None if conn else None},
+    )
+    return conn

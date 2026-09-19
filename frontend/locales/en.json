@@ -1124,7 +1124,16 @@
     "field_base_dn": "Base DN (AD/LDAP)",
     "field_api_token": "API token (firewall)",
     "connect_submit": "Connect",
-    "connect_failed": "Could not connect with the provided credentials."
+    "connect_failed": "Could not connect with the provided credentials.",
+    "details_btn": "Details",
+    "conn_bind_dn": "Bind DN",
+    "conn_base_dn": "Base DN",
+    "conn_last_verified": "Last verified",
+    "conn_reachable": "Reachable",
+    "conn_person_count": "Directory users",
+    "conn_none": "No stored connection.",
+    "reverify_btn": "Re-verify",
+    "conn_error": "Last error"
   },
   "extension_banner": {
     "title": "Browser protection available",

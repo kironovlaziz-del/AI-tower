@@ -43,3 +43,7 @@ agent/shadow-agent
 frontend/*_patch.py
 frontend/**/*.bak
 *.bak
+
+# Celery beat scheduler state (runtime, per-server)
+backend/celerybeat-schedule
+backend/celerybeat-schedule.db

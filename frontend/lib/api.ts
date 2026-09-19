@@ -30,6 +30,7 @@ import type {
   DomainPolicyStatus,
   SeedDomainHint,
   DiscoveredService,
+  ServiceConnection,
 } from "./types";
 
 const API_BASE_URL =
@@ -987,4 +988,21 @@ export async function downloadBrowserExtension() {
   link.click();
   link.remove();
   window.URL.revokeObjectURL(url);
+}
+
+
+// ---- Discovered service connection details ----
+export async function getServiceConnection(serviceId: number) {
+  const { data } = await api.get<ServiceConnection | null>(
+    `/discovery/${serviceId}/connection`
+  );
+  return data;
+}
+
+
+export async function reverifyServiceConnection(serviceId: number) {
+  const { data } = await api.post<ServiceConnection | null>(
+    `/discovery/${serviceId}/reverify`
+  );
+  return data;
 }

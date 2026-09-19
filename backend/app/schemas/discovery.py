@@ -65,3 +65,29 @@ class ServiceConnectRequest(BaseModel):
 
 class ServiceIgnoreRequest(BaseModel):
     reason: Optional[str] = None
+
+
+class ServiceConnectionOut(BaseModel):
+    """
+    Details of a live credentialed connection to a discovered service.
+    Deliberately EXCLUDES bind_password_encrypted - the secret is never
+    exposed through the API, only that a connection exists and whether it
+    last verified successfully.
+    """
+    id: int
+    org_id: int
+    discovered_service_id: int
+    service_type: str
+    host: str
+    port: Optional[int]
+    bind_dn: Optional[str]
+    base_dn: Optional[str]
+    username: Optional[str]
+    info: Optional[Dict[str, Any]]
+    last_verified_at: Optional[datetime]
+    last_error: Optional[str]
+    created_at: datetime
+    updated_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True

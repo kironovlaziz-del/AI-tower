@@ -21,7 +21,7 @@ from typing import Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.crypto import encrypt_secret
+from app.core.crypto import encrypt_secret, decrypt_secret
 from app.models.discovered_service import DiscoveredService
 from app.models.service_connection import ServiceConnection
 from app.schemas.discovery import ServiceConnectRequest
@@ -268,3 +268,65 @@ CONNECT_HANDLERS = {
     "ldap": connect_ldap,
     "dns": connect_dns,
 }
+
+
+# ---------------------------------------------------------------------------
+# Re-verification of an already-stored connection
+# ---------------------------------------------------------------------------
+
+async def verify_connection(conn) -> bool:
+    """
+    Re-check an existing ServiceConnection using its STORED credentials
+    (not freshly supplied ones) and update last_verified_at / last_error
+    in place. Returns True on success, False on failure. Never raises -
+    a failure is a recorded state, not an exception, because this runs
+    unattended (Celery beat) as well as on the manual "Re-verify" button.
+
+    Does NOT commit - the caller owns the transaction.
+    """
+    now = datetime.now(timezone.utc)
+
+    try:
+        if conn.service_type in ("active_directory", "ldap"):
+            ok, err = _verify_ldap(conn)
+        elif conn.service_type == "dns":
+            ok = _dns_probe(conn.host, conn.port or 53)
+            err = None if ok else "DNS server did not respond to a test query."
+        else:
+            ok, err = False, "Unsupported service type for verification."
+    except Exception as exc:  # noqa: BLE001 - unattended; record, don't crash the sweep
+        ok, err = False, str(exc)[:300]
+
+    conn.last_verified_at = now
+    conn.last_error = None if ok else err
+    return ok
+
+
+def _verify_ldap(conn) -> Tuple[bool, str]:
+    """Attempt an LDAP bind with the stored (decrypted) bind password."""
+    if not conn.bind_dn or not conn.bind_password_encrypted:
+        return False, "No stored bind credentials."
+    try:
+        from ldap3 import Server, Connection, ALL
+        from ldap3.core.exceptions import LDAPException
+    except ImportError:
+        return False, "LDAP support is not installed on the server."
+
+    try:
+        password = decrypt_secret(conn.bind_password_encrypted)
+    except Exception:
+        return False, "Stored credentials could not be decrypted."
+
+    port = conn.port or 389
+    use_ssl = port == 636
+    try:
+        server = Server(conn.host, port=port, use_ssl=use_ssl, get_info=ALL, connect_timeout=8)
+        c = Connection(
+            server, user=conn.bind_dn, password=password, auto_bind=True, receive_timeout=10
+        )
+        c.unbind()
+        return True, ""
+    except LDAPException as exc:
+        return False, "LDAP bind failed: " + str(exc)[:250]
+    except Exception as exc:  # noqa: BLE001
+        return False, "Could not reach the LDAP server: " + str(exc)[:250]

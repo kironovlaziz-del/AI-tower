@@ -35,6 +35,26 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
 )
 
-from app.workers import request_tasks, training_tasks, telemetry_tasks  # noqa: E402,F401
+# Scheduled (beat) tasks. Requires a running `celery beat` process
+# (systemd unit ai-ct-celery-beat) in addition to the worker.
+from celery.schedules import crontab  # noqa: E402
+
+celery_app.conf.beat_schedule = {
+    # Re-verify every stored service connection (AD/LDAP bind, DNS reach)
+    # a few times a day, so the UI reflects whether saved credentials
+    # still work. Staggered to a quiet minute rather than exactly on the
+    # hour.
+    "reverify-service-connections": {
+        "task": "discovery.reverify_connections",
+        "schedule": crontab(minute=17, hour="*/6"),  # 00:17, 06:17, 12:17, 18:17 UTC
+    },
+}
+
+from app.workers import (  # noqa: E402,F401
+    request_tasks,
+    training_tasks,
+    telemetry_tasks,
+    discovery_tasks,
+)
 
 

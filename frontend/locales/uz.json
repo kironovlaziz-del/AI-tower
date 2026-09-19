@@ -1124,7 +1124,16 @@
     "field_base_dn": "Base DN (AD/LDAP)",
     "field_api_token": "API token (firewall)",
     "connect_submit": "Ulash",
-    "connect_failed": "Kiritilgan hisob malumotlari bilan ulanib bolmadi."
+    "connect_failed": "Kiritilgan hisob malumotlari bilan ulanib bolmadi.",
+    "details_btn": "Tafsilotlar",
+    "conn_bind_dn": "Bind DN",
+    "conn_base_dn": "Base DN",
+    "conn_last_verified": "Oxirgi tekshiruv",
+    "conn_reachable": "Mavjud",
+    "conn_person_count": "Katalog foydalanuvchilari",
+    "conn_none": "Saqlangan ulanish yo'q.",
+    "reverify_btn": "Qayta tekshirish",
+    "conn_error": "Oxirgi xato"
   },
   "extension_banner": {
     "title": "Brauzer himoyasi mavjud",
