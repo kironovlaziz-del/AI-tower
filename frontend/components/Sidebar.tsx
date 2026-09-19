@@ -43,6 +43,13 @@ const NAV = [
     ],
   },
   {
+    sectionKey: "sidebar.sections.agent_governance",
+    items: [
+      { href: "/agents", labelKey: "sidebar.nav.agents" },
+      { href: "/agent-chains", labelKey: "sidebar.nav.agent_chains" },
+    ],
+  },
+  {
     sectionKey: "sidebar.sections.mlops",
     items: [
       { href: "/simple", labelKey: "sidebar.nav.simple_mode" },

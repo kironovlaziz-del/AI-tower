@@ -1,0 +1,88 @@
+// Agent-to-Agent Governance types (mirror backend app/schemas/agent.py)
+
+export interface Agent {
+  id: number;
+  org_id: number;
+  name: string;
+  description?: string | null;
+  agent_type?: string | null;
+  version?: string | null;
+  owner_user_id?: number | null;
+  owner_team?: string | null;
+  capabilities?: string[] | null;
+  allowed_tools?: string[] | null;
+  allowed_models?: string[] | null;
+  max_delegation_depth: number;
+  status: string; // active, suspended, retired
+  public_key?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface AgentCreated extends Agent {
+  api_key: string;      // shown once
+  private_key: string;  // shown once
+}
+
+export interface DelegationHopT {
+  id: number;
+  from_agent_id: number;
+  to_agent_id: number;
+  depth: number;
+  delegated_capabilities?: string[] | null;
+  task_description?: string | null;
+  verified: boolean;
+  created_at: string;
+}
+
+export interface DelegationChainT {
+  id: number;
+  org_id: number;
+  root_agent_id: number;
+  root_task?: string | null;
+  status: string; // active, completed, violated, terminated
+  total_hops: number;
+  max_depth_reached: number;
+  started_at: string;
+  completed_at?: string | null;
+}
+
+export interface DelegationChainDetail extends DelegationChainT {
+  hops: DelegationHopT[];
+}
+
+export interface AgentActionT {
+  id: number;
+  org_id: number;
+  chain_id?: number | null;
+  agent_id: number;
+  action_type?: string | null;
+  tool_name?: string | null;
+  policy_check_result?: string | null; // allowed, denied, pending_approval
+  reason?: string | null;
+  duration_ms?: number | null;
+  created_at: string;
+}
+
+export interface AgentPolicyT {
+  id: number;
+  org_id: number;
+  agent_id?: number | null;
+  name: string;
+  rules?: Record<string, unknown> | null;
+  priority: number;
+  enabled: boolean;
+  created_at: string;
+}
+
+export interface AgentIncidentT {
+  id: number;
+  org_id: number;
+  chain_id?: number | null;
+  agent_id?: number | null;
+  incident_type?: string | null;
+  severity?: string | null;
+  details?: Record<string, unknown> | null;
+  resolved: boolean;
+  created_at: string;
+}
