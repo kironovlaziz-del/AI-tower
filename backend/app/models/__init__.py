@@ -24,6 +24,9 @@ from app.models.rag_document import Document
 from app.models.document_chunk import DocumentChunk
 from app.models.discovered_service import DiscoveredService
 from app.models.service_connection import ServiceConnection
+from app.models.agent import Agent, AgentPolicy
+from app.models.delegation import DelegationChain, DelegationHop
+from app.models.agent_action import AgentAction, AgentIncident
 
 __all__ = [
     "Organization",
@@ -54,6 +57,12 @@ __all__ = [
     "DocumentChunk",
     "DiscoveredService",
     "ServiceConnection",
+    "Agent",
+    "AgentPolicy",
+    "DelegationChain",
+    "DelegationHop",
+    "AgentAction",
+    "AgentIncident",
 ]
 
 
