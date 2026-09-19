@@ -81,8 +81,10 @@ def validate_webhook_url(url: str) -> str:
             "webhook URL points at a private, loopback, or link-local address"
         )
 
-    # Normalize a trailing slash so /hook and /hook/ are one target.
-    if url.endswith("/") and url.count("/") > 2:
+    # Normalize a trailing slash on a real path so /hook and /hook/ are
+    # one target - but keep the lone root slash ("https://host/"), which
+    # is just the empty path.
+    if parsed.path not in ("", "/") and url.endswith("/"):
         url = url.rstrip("/")
     return url
 

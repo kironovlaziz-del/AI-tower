@@ -128,31 +128,44 @@ def parse_uploaded_file(file_path: str, file_type: str) -> ParseResult:
 
 def _read_delimited(file_path: str, sep: str) -> ParseResult:
     """
-    Real-world exports are frequently malformed (an unescaped comma/tab
-    inside a field is the single most common case) - the "magic" parsing
-    step promises the person never has to think about file format, so a
-    row-count mismatch must degrade to "skip that row" rather than a
-    crash. pandas' default C parser raises ParserError on any row with
-    the wrong number of fields; the python engine's on_bad_lines="skip"
-    tolerates that, at the cost of being slower - an acceptable trade for
-    files this small.
+    Parse a CSV/TSV into Q&A pairs, tolerating malformed rows.
+
+    Uses the standard-library csv module rather than pandas for the row
+    reading: pandas' on_bad_lines behaviour varies between versions
+    (2.x vs 3.x handle a wrong field count differently), which made
+    malformed-row handling non-deterministic. The csv module gives us
+    exact, version-independent control: the header defines the expected
+    column count, and any data row whose field count doesn't match is
+    counted as an error and skipped rather than silently mangled.
+
+    Column/Q&A detection still goes through _dataframe_to_qa via a small
+    well-formed DataFrame, so the multilingual header logic is shared.
     """
-    try:
-        df = pd.read_csv(file_path, sep=sep, dtype=str, keep_default_na=True)
-        return _dataframe_to_qa(df)
-    except pd.errors.ParserError:
-        bad_lines = []
-        df = pd.read_csv(
-            file_path,
-            sep=sep,
-            dtype=str,
-            keep_default_na=True,
-            engine="python",
-            on_bad_lines=lambda line: bad_lines.append(line) or None,
-        )
-        result = _dataframe_to_qa(df)
-        result.error_row_count += len(bad_lines)
-        return result
+    import csv
+
+    with open(file_path, "r", encoding="utf-8", errors="replace", newline="") as f:
+        reader = csv.reader(f, delimiter=sep)
+        rows = list(reader)
+
+    if not rows:
+        return ParseResult(has_unstructured_text=False, detected_columns=[])
+
+    header = rows[0]
+    ncols = len(header)
+    good_rows = []
+    bad_count = 0
+    for row in rows[1:]:
+        if len(row) == ncols:
+            good_rows.append(row)
+        else:
+            # Wrong field count (e.g. an unescaped delimiter split one
+            # field into several) - skip and count it.
+            bad_count += 1
+
+    df = pd.DataFrame(good_rows, columns=header, dtype=str)
+    result = _dataframe_to_qa(df)
+    result.error_row_count += bad_count
+    return result
 
 
 def _load_json_records(file_path: str, file_type: str) -> List[dict]:
