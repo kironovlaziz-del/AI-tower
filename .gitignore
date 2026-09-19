@@ -47,3 +47,7 @@ frontend/**/*.bak
 # Celery beat scheduler state (runtime, per-server)
 backend/celerybeat-schedule
 backend/celerybeat-schedule.db
+
+# editor backup files
+*.save
+*~
