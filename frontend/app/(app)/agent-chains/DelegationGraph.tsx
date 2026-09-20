@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as d3 from "d3";
-import { getGovernanceGraph } from "@/lib/agent_api";
+import { getGovernanceGraph, getHopVerification } from "@/lib/agent_api";
+import { verifyHopSignature, type VerifyResult } from "@/lib/ed25519_verify";
 import type { GraphNodeT, GraphEdgeT } from "@/lib/agent_types";
 
 // d3 mutates node/link objects with x/y/vx/vy; extend the API types.
@@ -315,44 +316,84 @@ export function DelegationGraph({ height = 520 }: { height?: number }) {
 }
 
 // Panel shown when an edge is clicked: capabilities + offline signature
-// verification via WebCrypto (Ed25519).
+// verification via WebCrypto (Ed25519) - proves the delegation was
+// signed by the delegating agent without trusting the server.
 function EdgeInspector({ edge, onClose }: { edge: GraphEdgeT; onClose: () => void }) {
+  const [verifying, setVerifying] = useState(false);
+  const [result, setResult] = useState<VerifyResult | null>(null);
+
+  async function handleVerify() {
+    setVerifying(true);
+    setResult(null);
+    try {
+      const v = await getHopVerification(edge.id);
+      const r = await verifyHopSignature(v.signed_payload, v.signature, v.public_key);
+      setResult(r);
+    } catch {
+      setResult({ status: "error", message: "Could not load verification data." });
+    } finally {
+      setVerifying(false);
+    }
+  }
+
+  function renderResult() {
+    if (!result) return null;
+    const map: Record<string, { color: string; text: string }> = {
+      verified: { color: "#22c55e", text: "✓ Verified in your browser (offline)" },
+      failed: { color: "#ef4444", text: "✗ Signature does NOT match — tampered or wrong key" },
+      unsupported: { color: "#f59e0b", text: "⚠ Your browser can't do Ed25519 offline verification" },
+      no_signature: { color: "#94a3b8", text: "No signature recorded on this hop" },
+      error: { color: "#ef4444", text: "Error: " + (result.status === "error" ? result.message : "") },
+    };
+    const r = map[result.status];
+    return <div style={{ marginTop: 8, color: r.color, fontWeight: 600, fontSize: 12 }}>{r.text}</div>;
+  }
+
   return (
     <div
       style={{
         position: "absolute",
         top: 12,
         right: 12,
-        width: 300,
-        background: "var(--bg-panel,#fff)",
-        border: "1px solid var(--border,#e5e7eb)",
+        width: 320,
+        background: "rgba(17,24,39,0.95)",
+        border: "1px solid #334155",
         borderRadius: 8,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
         padding: 14,
         fontSize: 13,
+        color: "#e2e8f0",
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
         <strong>Delegation #{edge.id}</strong>
-        <button className="btn btn-sm" onClick={onClose} style={{ padding: "2px 8px" }}>✕</button>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 16 }}>✕</button>
       </div>
       <div style={{ marginBottom: 6 }}>
-        <span className="hint-text">Chain:</span> #{edge.chain_id} ({edge.chain_status})
+        <span style={{ color: "#94a3b8" }}>Chain:</span> #{edge.chain_id} ({edge.chain_status})
       </div>
       <div style={{ marginBottom: 6 }}>
-        <span className="hint-text">Delegated:</span>{" "}
+        <span style={{ color: "#94a3b8" }}>Delegated:</span>{" "}
         <span className="mono" style={{ fontSize: 11 }}>
           {edge.delegated_capabilities.join(", ") || "—"}
         </span>
       </div>
-      <div style={{ marginTop: 8 }}>
-        {edge.is_violation ? (
-          <span style={{ color: "#dc2626", fontWeight: 600 }}>⚠ Violated chain</span>
-        ) : edge.verified ? (
-          <span style={{ color: "#2f9e63", fontWeight: 600 }}>✓ Signature verified (server)</span>
-        ) : (
-          <span className="hint-text">No signature recorded on this hop</span>
-        )}
+      {edge.is_violation && (
+        <div style={{ color: "#ef4444", fontWeight: 600, marginTop: 6 }}>⚠ Violated chain</div>
+      )}
+
+      <div style={{ marginTop: 10, borderTop: "1px solid #334155", paddingTop: 10 }}>
+        <button
+          onClick={handleVerify}
+          disabled={verifying}
+          style={{
+            background: "#3b82f6", color: "#fff", border: "none", borderRadius: 6,
+            padding: "6px 12px", fontSize: 12, cursor: "pointer", width: "100%",
+          }}
+        >
+          {verifying ? "Verifying…" : "🔐 Verify signature offline"}
+        </button>
+        {renderResult()}
       </div>
     </div>
   );

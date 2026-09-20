@@ -51,6 +51,44 @@ async def register_agent(
     )
 
 
+@router.get("/delegation-hops/{hop_id}/verification")
+async def hop_verification(
+    hop_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns everything needed to verify a hop's signature OFFLINE in the
+    browser: the exact signed payload, the Ed25519 signature, and the
+    delegating agent's public key. The client can confirm the delegation
+    was authorized by that agent without trusting this server.
+    """
+    from fastapi import HTTPException, status as st
+    from app.models.delegation import DelegationHop
+
+    result = await db.execute(
+        select(DelegationHop).where(
+            DelegationHop.id == hop_id, DelegationHop.org_id == current_user.org_id
+        )
+    )
+    hop = result.scalar_one_or_none()
+    if not hop:
+        raise HTTPException(status_code=st.HTTP_404_NOT_FOUND, detail="Hop not found")
+
+    # delegating agent's public key
+    reg = AgentRegistry(db)
+    from_agent = await reg.get_agent(hop.from_agent_id, current_user.org_id)
+
+    return {
+        "hop_id": hop.id,
+        "has_signature": bool(hop.signature),
+        "signed_payload": hop.signed_payload,     # canonical dict that was signed
+        "signature": hop.signature,               # base64 Ed25519
+        "public_key": from_agent.public_key,      # base64 Ed25519 public key
+        "server_verified": bool(hop.verified),
+    }
+
+
 @router.get("/graph", response_model=GovernanceGraph)
 async def governance_graph(
     db: AsyncSession = Depends(get_db),
@@ -135,18 +173,22 @@ async def delegate(
     service = DelegationService(db)
     registry = AgentRegistry(db)
 
+    # The canonical payload that the delegating agent signs. Built the
+    # same way regardless of whether a signature was supplied, and stored
+    # on the hop so offline verification reconstructs nothing.
+    signed_payload = {
+        "from_agent_id": agent_id,
+        "to_agent_id": data.to_agent_id,
+        "task": data.task,
+        "delegated_capabilities": sorted(data.delegated_capabilities or []),
+        "chain_id": data.chain_id,
+    }
+
     # Verify signature (if provided) against the delegating agent's key.
     verified = False
     if data.signature:
         from_agent = await registry.get_agent(agent_id, current_user.org_id)
-        payload = {
-            "from_agent_id": agent_id,
-            "to_agent_id": data.to_agent_id,
-            "task": data.task,
-            "delegated_capabilities": sorted(data.delegated_capabilities or []),
-            "chain_id": data.chain_id,
-        }
-        verified = verify_payload(payload, data.signature, from_agent.public_key or "")
+        verified = verify_payload(signed_payload, data.signature, from_agent.public_key or "")
         if not verified:
             from fastapi import HTTPException, status as st
             raise HTTPException(
@@ -167,6 +209,7 @@ async def delegate(
         signature=data.signature,
         chain_id=data.chain_id,
         expires_at=expires_at,
+        signed_payload=signed_payload if data.signature else None,
     )
     from_agent = await registry.get_agent(agent_id, current_user.org_id)
     remaining = max(from_agent.max_delegation_depth - hop.depth, 0)

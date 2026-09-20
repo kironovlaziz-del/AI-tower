@@ -54,5 +54,11 @@ class DelegationHop(Base):
     task_description = Column(Text)
     expires_at = Column(DateTime(timezone=True))
     signature = Column(Text)  # Ed25519 signature by from_agent
+    # The exact canonical payload that was signed, stored so offline
+    # verification (in the browser or by an auditor) reconstructs nothing
+    # and cannot drift from what the signer actually signed. Without this,
+    # a payload field like chain_id (null at root-signing time, a real id
+    # afterwards) would make the signature impossible to re-verify.
+    signed_payload = Column(JSONB)
     verified = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

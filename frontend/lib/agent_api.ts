@@ -122,3 +122,18 @@ export async function getGovernanceGraph() {
   const { data } = await api.get<GovernanceGraphT>("/agents/graph");
   return data;
 }
+
+// hop verification data for offline (browser) signature check
+export interface HopVerification {
+  hop_id: number;
+  has_signature: boolean;
+  signed_payload: Record<string, unknown> | null;
+  signature: string | null;
+  public_key: string | null;
+  server_verified: boolean;
+}
+
+export async function getHopVerification(hopId: number) {
+  const { data } = await api.get<HopVerification>(`/agents/delegation-hops/${hopId}/verification`);
+  return data;
+}
