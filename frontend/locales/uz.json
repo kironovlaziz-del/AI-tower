@@ -82,7 +82,8 @@
       "agents": "Agentlar",
       "agent_chains": "Delegatsiya zanjirlari",
       "agent_approvals": "Tasdiqlash kutilmoqda",
-      "agent_map": "Jonli xarita"
+      "agent_map": "Jonli xarita",
+      "agent_policies": "Agent siyosatlari"
     },
     "logout": "Chiqish",
     "role_admin": "administrator",
@@ -1243,5 +1244,47 @@
     "legend_suspended": "To'xtatilgan",
     "legend_verified": "Tasdiqlangan delegatsiya",
     "legend_violated_edge": "Buzilgan zanjir"
+  },
+  "rulebuilder": {
+    "empty": "Hozircha qoidalar yo'q. Quyida qo'shing — qoidalarsiz siyosat hamma narsaga ruxsat beradi.",
+    "kind_deny_tools": "Muayyan vositalarni bloklash",
+    "kind_allow_only_tools": "Faqat shu vositalarga ruxsat",
+    "kind_require_approval_tools": "Inson tasdig'ini talab qilish",
+    "kind_deny_action_types": "Amal turlarini bloklash",
+    "hint_deny_tools": "Ro'yxatdagi har qanday vosita to'g'ridan-to'g'ri rad etiladi. Agent hech qachon chaqirmasligi kerak bo'lgan vositalar uchun (masalan, stripe.charge).",
+    "hint_allow_only_tools": "Faqat ro'yxatdagi vositalarga ruxsat beriladi; qolganlari rad etiladi. Qat'iy ruxsat ro'yxati.",
+    "hint_require_approval_tools": "Agent bularni odam Tasdiqlash kutilmoqda sahifasida tasdiqlamaguncha bajara olmaydi.",
+    "hint_deny_action_types": "Amallarning butun toifalarini rad etish (tool_call, api_request, model_call).",
+    "ph_deny_tools": "stripe.charge, email.send",
+    "ph_allow_only_tools": "openai.chat, db.read",
+    "ph_require_approval_tools": "stripe.charge",
+    "ph_deny_action_types": "api_request",
+    "pol_blocked_title": "Bloklangan atamalar",
+    "pol_blocked_hint": "Ushbu so'zlardan birini o'z ichiga olgan prompt AI provayderiga yetib borishdan oldin rad etiladi.",
+    "pol_blocked_ph": "maxfiy, faqat-ichki, loyiha-x",
+    "pol_approval_title": "Har bir so'rov uchun tasdiq talab qilish",
+    "pol_approval_hint": "Ushbu siyosatdagi har bir so'rov bajarilishidan oldin ko'rib chiquvchi tomonidan tasdiqlanishi kerak.",
+    "mode_visual": "Vizual konstruktor",
+    "mode_json": "JSON (professional)",
+    "json_invalid": "Yaroqsiz JSON."
+  },
+  "agent_policies": {
+    "title": "Agent siyosatlari",
+    "new": "Yangi agent siyosati",
+    "hint": "Agentlar nima qila olishini cheklaydigan qoidalar. Siyosatni bitta agentga yoki barcha agentlarga qo'llang.",
+    "col_name": "Nomi",
+    "col_scope": "Qo'llaniladi",
+    "col_rules": "Qoidalar",
+    "col_priority": "Ustuvorlik",
+    "col_enabled": "Yoqilgan",
+    "empty": "Hali agent siyosatlari yo'q.",
+    "all_agents": "Barcha agentlar",
+    "name": "Siyosat nomi",
+    "scope": "Qo'llaniladi",
+    "priority": "Ustuvorlik",
+    "priority_hint": "Bir nechta siyosat mos kelganda yuqori ustuvorlik g'olib chiqadi.",
+    "rules": "Qoidalar",
+    "create": "Siyosat yaratish",
+    "create_failed": "Siyosatni yaratib bo'lmadi."
   }
 }

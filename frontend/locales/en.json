@@ -82,7 +82,8 @@
       "agents": "Agents",
       "agent_chains": "Delegation Chains",
       "agent_approvals": "Pending Approvals",
-      "agent_map": "Live Map"
+      "agent_map": "Live Map",
+      "agent_policies": "Agent Policies"
     },
     "logout": "Sign out",
     "role_admin": "admin",
@@ -1243,5 +1244,47 @@
     "legend_suspended": "Suspended",
     "legend_verified": "Verified delegation",
     "legend_violated_edge": "Violated chain"
+  },
+  "rulebuilder": {
+    "empty": "No rules yet. Add one below — with no rules, the policy allows everything.",
+    "kind_deny_tools": "Block specific tools",
+    "kind_allow_only_tools": "Allow only these tools",
+    "kind_require_approval_tools": "Require human approval",
+    "kind_deny_action_types": "Block action types",
+    "hint_deny_tools": "Any listed tool is denied outright. Use for tools an agent must never call (e.g. stripe.charge).",
+    "hint_allow_only_tools": "Only the listed tools are permitted; everything else is denied. A strict allowlist.",
+    "hint_require_approval_tools": "The agent can't run these until a person approves them on the Pending Approvals page.",
+    "hint_deny_action_types": "Deny whole categories of action (tool_call, api_request, model_call).",
+    "ph_deny_tools": "stripe.charge, email.send",
+    "ph_allow_only_tools": "openai.chat, db.read",
+    "ph_require_approval_tools": "stripe.charge",
+    "ph_deny_action_types": "api_request",
+    "pol_blocked_title": "Blocked terms",
+    "pol_blocked_hint": "A prompt containing any of these words is rejected before it reaches an AI provider.",
+    "pol_blocked_ph": "confidential, internal-only, project-x",
+    "pol_approval_title": "Require approval for every request",
+    "pol_approval_hint": "Every request under this policy must be approved by a reviewer before it runs.",
+    "mode_visual": "Visual builder",
+    "mode_json": "JSON (advanced)",
+    "json_invalid": "Invalid JSON."
+  },
+  "agent_policies": {
+    "title": "Agent Policies",
+    "new": "New agent policy",
+    "hint": "Rules that constrain what agents may do. Scope a policy to one agent or to all agents in the org.",
+    "col_name": "Name",
+    "col_scope": "Applies to",
+    "col_rules": "Rules",
+    "col_priority": "Priority",
+    "col_enabled": "Enabled",
+    "empty": "No agent policies yet.",
+    "all_agents": "All agents",
+    "name": "Policy name",
+    "scope": "Applies to",
+    "priority": "Priority",
+    "priority_hint": "Higher priority wins when several policies match.",
+    "rules": "Rules",
+    "create": "Create policy",
+    "create_failed": "Could not create the policy."
   }
 }

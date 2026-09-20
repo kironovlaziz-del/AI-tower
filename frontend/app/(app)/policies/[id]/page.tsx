@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
+import { PolicyRuleBuilder } from "@/components/PolicyRuleBuilder";
 import { StatusPill } from "@/components/Pill";
 import {
   approvePolicyVersion,
@@ -26,6 +27,8 @@ export default function PolicyDetailPage() {
   const [rulesText, setRulesText] = useState(
     '{\n  "effect": "require_approval"\n}'
   );
+  const [ruleMode, setRuleMode] = useState<"visual"|"json">("visual");
+  const [ruleObj, setRuleObj] = useState<Record<string,unknown>>({});
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -48,11 +51,15 @@ export default function PolicyDetailPage() {
     e.preventDefault();
     setError(null);
     let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(rulesText);
-    } catch {
-      setError(t("policies.detail.invalid_json"));
-      return;
+    if (ruleMode === "visual") {
+      parsed = ruleObj;
+    } else {
+      try {
+        parsed = JSON.parse(rulesText);
+      } catch {
+        setError(t("policies.detail.invalid_json"));
+        return;
+      }
     }
     setSubmitting(true);
     try {
@@ -114,13 +121,16 @@ export default function PolicyDetailPage() {
             <Form onSubmit={handleCreateVersion}>
               <div className="field">
                 <label htmlFor="rules">{t("policies.detail.rules")}</label>
-                <textarea
-                  id="rules"
-                  className="mono"
-                  rows={6}
-                  value={rulesText}
-                  onChange={(e) => setRulesText(e.target.value)}
-                />
+                {(() => null)()}
+                <div style={{ display: "inline-flex", gap: 4, marginBottom: 10, border: "1px solid var(--border)", borderRadius: 8, padding: 3 }}>
+                  <button type="button" className="btn btn-sm" style={{ background: ruleMode === "visual" ? "var(--bg-app)" : "transparent" }}
+                    onClick={() => { setRuleMode("visual"); }}>{t("rulebuilder.mode_visual")}</button>
+                  <button type="button" className="btn btn-sm" style={{ background: ruleMode === "json" ? "var(--bg-app)" : "transparent" }}
+                    onClick={() => { setRulesText(JSON.stringify(ruleObj, null, 2)); setRuleMode("json"); }}>{t("rulebuilder.mode_json")}</button>
+                </div>
+                {ruleMode === "visual"
+                  ? <PolicyRuleBuilder value={ruleObj} onChange={setRuleObj} />
+                  : <textarea value={rulesText} onChange={(e) => setRulesText(e.target.value)} rows={7} style={{ width: "100%", fontFamily: "monospace", fontSize: 13 }} />}
                 <span className="hint-text">{t("policies.detail.rules_hint")}</span>
               </div>
               {error && <p className="error-text">{error}</p>}

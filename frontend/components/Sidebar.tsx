@@ -48,6 +48,7 @@ const NAV = [
       { href: "/agent-map", labelKey: "sidebar.nav.agent_map" },
       { href: "/agents", labelKey: "sidebar.nav.agents" },
       { href: "/agent-chains", labelKey: "sidebar.nav.agent_chains" },
+      { href: "/agent-policies", labelKey: "sidebar.nav.agent_policies", adminOnly: true },
       { href: "/agent-approvals", labelKey: "sidebar.nav.agent_approvals", adminOnly: true },
     ],
   },
