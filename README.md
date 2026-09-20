@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/ACT-logo-full.png" width="180" alt="AI Control Tower logo">
+</p>
+
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI](https://github.com/kironovlaziz-del/AI-tower/actions/workflows/ci.yml/badge.svg)](https://github.com/kironovlaziz-del/AI-tower/actions/workflows/ci.yml)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
