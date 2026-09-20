@@ -19,11 +19,24 @@ interface SimLink extends GraphEdgeT {
 
 const POLL_MS = 5000;
 
+// Dark-theme palette: brighter, slightly neon colors that glow on the
+// dark canvas.
+const COL = {
+  active: "#3b82f6",      // bright blue
+  violation: "#ef4444",   // bright red
+  suspended: "#64748b",   // slate
+  retired: "#475569",
+  verifiedEdge: "#22c55e", // green
+  particle: "#4ade80",
+  edge: "#64748b",
+  text: "#e2e8f0",
+};
+
 function nodeColor(n: SimNode): string {
-  if (n.has_violation) return "#dc2626";        // red - has an unresolved incident
-  if (n.status === "suspended") return "#94a3b8"; // grey - killed
-  if (n.status === "retired") return "#cbd5e1";
-  return "#2451d9";                              // blue - active
+  if (n.has_violation) return COL.violation;
+  if (n.status === "suspended") return COL.suspended;
+  if (n.status === "retired") return COL.retired;
+  return COL.active;
 }
 
 export function DelegationGraph({ height = 520 }: { height?: number }) {
@@ -46,13 +59,27 @@ export function DelegationGraph({ height = 520 }: { height?: number }) {
     const sel = d3.select(svg);
     sel.attr("viewBox", `0 0 ${width} ${height}`);
 
-    // Ensure the layer <g> containers exist exactly once. Without this,
-    // the sel.select("g.links") calls below match nothing and there is
-    // nowhere to draw (the graph renders empty).
-    if (sel.select("g.links").empty()) {
-      sel.append("g").attr("class", "links");
-      sel.append("g").attr("class", "particles");
-      sel.append("g").attr("class", "nodes");
+    // Ensure the zoom root + layer <g> containers exist exactly once.
+    // Everything is drawn inside g.zoom-root so a single d3.zoom transform
+    // pans/zooms the whole graph. Without the root, the layer selects
+    // below match nothing and the graph renders empty.
+    if (sel.select("g.zoom-root").empty()) {
+      const root = sel.append("g").attr("class", "zoom-root");
+      root.append("g").attr("class", "links");
+      root.append("g").attr("class", "particles");
+      root.append("g").attr("class", "nodes");
+
+      const zoom = d3
+        .zoom<SVGSVGElement, unknown>()
+        .scaleExtent([0.3, 3])
+        .on("zoom", (event) => {
+          root.attr("transform", event.transform.toString());
+        });
+      sel.call(zoom as any);
+      // double-click resets the view
+      sel.on("dblclick.zoom", null).on("dblclick", () => {
+        sel.transition().duration(400).call(zoom.transform as any, d3.zoomIdentity);
+      });
     }
 
     // ---- links ----
@@ -69,9 +96,9 @@ export function DelegationGraph({ height = 520 }: { height?: number }) {
       .attr("cursor", "pointer")
       .on("click", (_evt, d) => setSelectedEdge(d as GraphEdgeT));
     linkEnter.merge(linkSel as any)
-      .attr("stroke", (d) => (d.is_violation ? "#dc2626" : d.verified ? "#2f9e63" : "#94a3b8"))
+      .attr("stroke", (d) => (d.is_violation ? COL.violation : d.verified ? COL.verifiedEdge : COL.edge))
       .attr("stroke-dasharray", (d) => (d.is_violation ? "6 4" : "none"))
-      .attr("opacity", (d) => (d.chain_status === "terminated" ? 0.35 : 0.85));
+      .attr("opacity", (d) => (d.chain_status === "terminated" ? 0.35 : 0.9));
 
     // ---- particles (one per active edge, animated along the line) ----
     const partSel = sel
@@ -82,7 +109,8 @@ export function DelegationGraph({ height = 520 }: { height?: number }) {
         (d: any) => d.id
       );
     partSel.exit().remove();
-    partSel.enter().append("circle").attr("r", 3).attr("fill", "#2f9e63");
+    partSel.enter().append("circle").attr("r", 3.5).attr("fill", COL.particle)
+      .attr("filter", "drop-shadow(0 0 4px " + COL.particle + ")");
 
     // ---- nodes ----
     const nodeSel = sel
@@ -92,15 +120,16 @@ export function DelegationGraph({ height = 520 }: { height?: number }) {
 
     nodeSel.exit().remove();
     const nodeEnter = nodeSel.enter().append("g").attr("class", "node").attr("cursor", "grab");
-    nodeEnter.append("circle").attr("r", 16);
+    nodeEnter.append("circle").attr("r", 16).attr("filter", "url(#node-glow)");
     // pulse ring for active/busy nodes
     nodeEnter.append("circle").attr("class", "pulse").attr("r", 16).attr("fill", "none");
     nodeEnter
       .append("text")
       .attr("text-anchor", "middle")
-      .attr("dy", 30)
+      .attr("dy", 32)
       .attr("font-size", 11)
-      .attr("fill", "currentColor");
+      .attr("font-weight", 500)
+      .attr("fill", COL.text);
 
     const nodeMerge = nodeEnter.merge(nodeSel as any);
     nodeMerge.select("circle").attr("fill", (d) => nodeColor(d));
@@ -196,16 +225,17 @@ export function DelegationGraph({ height = 520 }: { height?: number }) {
             const y = s.y! + (tg.y! - s.y!) * phase;
             d3.select(this).attr("cx", x).attr("cy", y);
           });
-        // pulse rings
-        const pulseR = 16 + Math.sin(t / 300) * 6;
-        const pulseOp = 0.6 - (Math.sin(t / 300) + 1) * 0.25;
+        // pulse rings - more pronounced for the dark theme
+        const pulseR = 18 + Math.sin(t / 260) * 10;
+        const pulseOp = 0.7 - (Math.sin(t / 260) + 1) * 0.3;
         d3.select(svg)
           .selectAll<SVGCircleElement, SimNode>("circle.pulse")
           .each(function () {
             const active = this.getAttribute("data-active") === "1";
             d3.select(this)
               .attr("r", active ? pulseR : 16)
-              .attr("opacity", active ? pulseOp : 0);
+              .attr("stroke-width", active ? 2.5 : 0)
+              .attr("opacity", active ? Math.max(pulseOp, 0) : 0);
           });
       }
       raf = requestAnimationFrame(animate);
@@ -261,8 +291,22 @@ export function DelegationGraph({ height = 520 }: { height?: number }) {
         ref={svgRef}
         width="100%"
         height={height}
-        style={{ background: "var(--bg-app,#f8fafc)", borderRadius: 8, color: "var(--text-primary,#1e293b)" }}
-      />
+        style={{
+          background: "radial-gradient(circle at 50% 40%, #1a2234 0%, #0b0f1a 100%)",
+          borderRadius: 8,
+          cursor: "grab",
+        }}
+      >
+        <defs>
+          <filter id="node-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+      </svg>
       {selectedEdge && (
         <EdgeInspector edge={selectedEdge} onClose={() => setSelectedEdge(null)} />
       )}
