@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { register } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { Logo } from "@/components/Logo";
 
 function slugify(name: string): string {
   return name
@@ -68,7 +69,7 @@ export default function RegisterPage() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <div className="auth-brand">{t("auth.brand")}</div>
+        <div className="auth-brand" style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}><Logo size="lg" center /></div>
         <LanguageSwitcher variant="light" />
         <h1 className="auth-title">{t("register.title")}</h1>
         <form onSubmit={handleSubmit}>

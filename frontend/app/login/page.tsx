@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { translateApiError } from "@/lib/errors";
+import { Logo } from "@/components/Logo";
 
 const LAST_ORG_KEY = "ai_ct_last_org";
 
@@ -44,7 +45,7 @@ export default function LoginPage() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <div className="auth-brand">{t("auth.brand")}</div>
+        <div className="auth-brand" style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}><Logo size="lg" center /></div>
         <LanguageSwitcher variant="light" />
         <h1 className="auth-title">{t("auth.login_title")}</h1>
         <form onSubmit={handleSubmit}>

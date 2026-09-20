@@ -15,8 +15,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://stickstock.lol"),
   title: "AI Control Tower",
-  description: "Governance, oversight and audit for enterprise AI usage",
+  description: "Governance for every AI in your company — from shadow AI to autonomous agents, with verifiable accountability.",
+  openGraph: {
+    title: "AI Control Tower",
+    description: "Governance for every AI in your company — from shadow AI to autonomous agents, with verifiable accountability.",
+    type: "website",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "AI Control Tower" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Control Tower",
+    description: "Governance for every AI in your company, with verifiable accountability.",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

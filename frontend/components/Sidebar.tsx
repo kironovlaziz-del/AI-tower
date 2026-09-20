@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/lib/auth";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { Logo } from "@/components/Logo";
 
 const NAV = [
   {
@@ -77,8 +78,8 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <div className="sidebar-brand-title">AI Control Tower</div>
-        <div className="sidebar-brand-sub">org-{user?.org_id ?? "—"}</div>
+        <Logo />
+        <div className="sidebar-brand-sub" style={{ marginTop: 6 }}>org-{user?.org_id ?? "—"}</div>
       </div>
       <nav className="sidebar-nav">
         {NAV.map((group) => (
