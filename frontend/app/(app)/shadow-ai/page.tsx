@@ -520,10 +520,9 @@ export default function ShadowAIPage() {
                             className="btn btn-sm"
                             disabled={busyId === s.id}
                             onClick={() => handleSetStatus(s.id, "dismissed")}
-                            title={t("shadow_ai.action_dismiss")}
                             style={{ padding: "4px 7px", fontSize: "11px" }}
                           >
-                            ✕
+                            {t("shadow_ai.action_dismiss")}
                           </button>
                         )}
                       </div>

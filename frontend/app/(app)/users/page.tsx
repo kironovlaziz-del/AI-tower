@@ -186,7 +186,7 @@ export default function UsersPage() {
                   <th style={{ width: 60 }}>{t("users.col_id")}</th>
                   <th>{t("users.col_name")}</th>
                   <th>{t("users.col_email")}</th>
-                  <th style={{ width: 130 }}>{t("users.col_role")}</th>
+                  <th style={{ width: 150 }}>{t("users.col_role")}</th>
                   <th style={{ width: 100 }}>{t("users.col_status")}</th>
                   <th style={{ width: 180 }}>{t("users.col_created")}</th>
                   <th style={{ width: 120, textAlign: "right" }}>
@@ -238,9 +238,9 @@ export default function UsersPage() {
                             borderRadius: 4,
                             padding: "4px 8px",
                             background: "var(--bg-panel)",
-                            fontSize: 12,
+                            fontSize: 13,
                             width: "100%",
-                            maxWidth: 120,
+                            minWidth: 110,
                           }}
                         >
                           {ROLES.map((r) => (
