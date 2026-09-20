@@ -15,10 +15,12 @@ from app.schemas.agent import (
     DelegateRequest, DelegateResponse, ChainOut, ChainDetail, HopOut,
     ActionCheckRequest, ActionCheckResponse, ActionRecordRequest, ActionDenyRequest, ActionOut,
     AgentPolicyCreate, AgentPolicyOut, AgentIncidentOut,
+    GovernanceGraph,
 )
 from app.services.agent_registry import AgentRegistry
 from app.services.delegation_service import DelegationService
 from app.services.agent_audit import AgentAudit
+from app.services.governance_graph_service import GovernanceGraphService
 from app.services.audit_service import AuditService
 from app.models.agent import Agent, AgentPolicy
 from app.models.agent_action import AgentIncident
@@ -47,6 +49,20 @@ async def register_agent(
         api_key=raw_key,
         private_key=private_key,
     )
+
+
+@router.get("/graph", response_model=GovernanceGraph)
+async def governance_graph(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    The live governance map in one query: agents (nodes) with status,
+    violation, and recent-activity annotations; delegation hops (edges)
+    with verification and violation state. Polled by the graph UI.
+    """
+    graph = await GovernanceGraphService(db).build(current_user.org_id)
+    return graph
 
 
 @router.get("/", response_model=Page[AgentOut])

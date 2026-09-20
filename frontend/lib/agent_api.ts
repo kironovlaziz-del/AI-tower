@@ -114,3 +114,11 @@ export async function listAgentIncidents() {
   const { data } = await api.get<Page<AgentIncidentT>>("/agents/incidents/");
   return items(data);
 }
+
+// ---- Governance graph ----
+import type { GovernanceGraphT } from "./agent_types";
+
+export async function getGovernanceGraph() {
+  const { data } = await api.get<GovernanceGraphT>("/agents/graph");
+  return data;
+}

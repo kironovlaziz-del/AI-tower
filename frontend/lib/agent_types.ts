@@ -86,3 +86,30 @@ export interface AgentIncidentT {
   resolved: boolean;
   created_at: string;
 }
+
+// ---- Governance graph (live map) ----
+export interface GraphNodeT {
+  id: number;
+  name: string;
+  agent_type?: string | null;
+  status: string;
+  has_violation: boolean;
+  action_count: number;
+}
+
+export interface GraphEdgeT {
+  id: number;
+  chain_id: number;
+  from_agent_id: number;
+  to_agent_id: number;
+  delegated_capabilities: string[];
+  verified: boolean;
+  chain_status: string;
+  is_violation: boolean;
+}
+
+export interface GovernanceGraphT {
+  nodes: GraphNodeT[];
+  edges: GraphEdgeT[];
+  generated_at: string;
+}

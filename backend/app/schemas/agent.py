@@ -208,3 +208,31 @@ class AgentIncidentOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ---- Governance graph (live map) ----
+
+class GraphNode(BaseModel):
+    id: int
+    name: str
+    agent_type: Optional[str]
+    status: str                    # active, suspended, retired
+    has_violation: bool = False    # any unresolved incident on this agent
+    action_count: int = 0          # recent actions (drives "activity" pulse)
+
+
+class GraphEdge(BaseModel):
+    id: int                        # hop id
+    chain_id: int
+    from_agent_id: int
+    to_agent_id: int
+    delegated_capabilities: List[str] = Field(default_factory=list)
+    verified: bool = False         # signature present & verified at hop time
+    chain_status: str              # active, completed, violated, terminated
+    is_violation: bool = False     # this edge's chain is violated
+
+
+class GovernanceGraph(BaseModel):
+    nodes: List[GraphNode] = Field(default_factory=list)
+    edges: List[GraphEdge] = Field(default_factory=list)
+    generated_at: datetime

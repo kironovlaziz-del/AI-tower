@@ -15,12 +15,14 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-i18next": "^17.0.13",
-    "recharts": "^3.10.1"
+    "recharts": "^3.10.1",
+    "d3": "^7.9.0"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@types/d3": "^7.4.3"
   }
 }

@@ -81,7 +81,8 @@
       "simple_mode": "Simple Mode (guided)",
       "agents": "Agents",
       "agent_chains": "Delegation Chains",
-      "agent_approvals": "Pending Approvals"
+      "agent_approvals": "Pending Approvals",
+      "agent_map": "Live Map"
     },
     "logout": "Sign out",
     "role_admin": "admin",
@@ -1233,5 +1234,14 @@
     "approve": "Approve",
     "deny": "Deny",
     "deny_prompt": "Reason for denying this action (optional):"
+  },
+  "agent_map": {
+    "title": "Agent Governance — Live Map",
+    "hint": "A live graph of your agents and the delegations between them. Nodes pulse when active and turn red on a violation; edges show verified delegations and break red when a chain is violated. Click an edge to inspect it.",
+    "legend_active": "Active agent",
+    "legend_violation": "Has violation",
+    "legend_suspended": "Suspended",
+    "legend_verified": "Verified delegation",
+    "legend_violated_edge": "Violated chain"
   }
 }

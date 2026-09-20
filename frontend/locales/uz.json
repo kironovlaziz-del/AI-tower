@@ -81,7 +81,8 @@
       "simple_mode": "Oddiy rejim (yordamchi)",
       "agents": "Agentlar",
       "agent_chains": "Delegatsiya zanjirlari",
-      "agent_approvals": "Tasdiqlash kutilmoqda"
+      "agent_approvals": "Tasdiqlash kutilmoqda",
+      "agent_map": "Jonli xarita"
     },
     "logout": "Chiqish",
     "role_admin": "administrator",
@@ -1233,5 +1234,14 @@
     "approve": "Tasdiqlash",
     "deny": "Rad etish",
     "deny_prompt": "Ushbu amalni rad etish sababi (ixtiyoriy):"
+  },
+  "agent_map": {
+    "title": "Agent boshqaruvi — Jonli xarita",
+    "hint": "Agentlaringiz va ular orasidagi delegatsiyalarning jonli grafigi. Tugunlar faol bo'lganda pulsatsiya qiladi va buzilishda qizil bo'ladi; qirralar tasdiqlangan delegatsiyalarni ko'rsatadi va zanjir buzilganda qizil uziladi. Tekshirish uchun qirraga bosing.",
+    "legend_active": "Faol agent",
+    "legend_violation": "Buzilish bor",
+    "legend_suspended": "To'xtatilgan",
+    "legend_verified": "Tasdiqlangan delegatsiya",
+    "legend_violated_edge": "Buzilgan zanjir"
   }
 }
