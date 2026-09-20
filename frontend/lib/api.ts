@@ -802,6 +802,13 @@ export async function revokeIngestionSource(id: number) {
 
 // ---- Shadow AI Monitor: AI domain catalog ----
 
+export async function importKnownDomains() {
+  const { data } = await api.post<{ added: number; skipped: number; total_seed: number }>(
+    "/domain-catalog/import-known"
+  );
+  return data;
+}
+
 export async function listDomainCatalog() {
   const { data } = await api.get<Page<DomainCatalogEntry>>("/domain-catalog/");
   return unwrap(data);

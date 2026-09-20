@@ -23,6 +23,32 @@ class DomainCatalogService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def import_seed(self, org_id: int) -> dict:
+        """Add every known AI domain from the seed catalog that the org
+        doesn't already have, as 'unknown' (needs review) - the org
+        decides allow/block per domain. Existing domains are skipped."""
+        from app.services.domain_catalog_seed import SEED_DOMAINS
+        from app.models.ai_domain_catalog import AIDomainCatalog
+        existing_res = await self.db.execute(
+            select(AIDomainCatalog.domain).where(AIDomainCatalog.org_id == org_id)
+        )
+        existing = {row[0] for row in existing_res.all()}
+        added = 0
+        for seed in SEED_DOMAINS:
+            if seed["domain"] in existing:
+                continue
+            self.db.add(AIDomainCatalog(
+                org_id=org_id,
+                domain=seed["domain"],
+                tool_name=seed.get("tool_name"),
+                category=seed.get("category"),
+                policy_status="unknown",
+                source="seed_import",
+            ))
+            added += 1
+        await self.db.commit()
+        return {"added": added, "skipped": len(SEED_DOMAINS) - added, "total_seed": len(SEED_DOMAINS)}
+
     async def create_entry(self, org_id: int, data: DomainCatalogCreate) -> AIDomainCatalog:
         entry = AIDomainCatalog(
             org_id=org_id,

@@ -18,6 +18,22 @@ from app.api.deps import require_role, get_current_user
 router = APIRouter()
 
 
+@router.post("/import-known")
+async def import_known_domains(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.admin)),
+):
+    """Bulk-add the built-in known AI domains to this org's catalog as
+    'unknown' (needs review). Admin only; skips domains already present."""
+    service = DomainCatalogService(db)
+    result = await service.import_seed(current_user.org_id)
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "domain_catalog", 0, "import_known",
+        result,
+    )
+    return result
+
+
 @router.get("/seed-suggestions")
 async def seed_suggestions(current_user: User = Depends(get_current_user)):
     """The built-in known-domain hints, so an admin can quickly add

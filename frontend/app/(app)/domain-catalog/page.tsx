@@ -10,6 +10,7 @@ import {
   deleteDomainCatalogEntry,
   getDomainCatalogSeedSuggestions,
   listDomainCatalog,
+  importKnownDomains,
   updateDomainCatalogEntry,
 } from "@/lib/api";
 import type { DomainCatalogEntry, DomainPolicyStatus, SeedDomainHint } from "@/lib/types";
@@ -29,6 +30,19 @@ export default function DomainCatalogPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [page, setPage] = useState(0);
+  const [importing, setImporting] = useState(false);
+  const PAGE_SIZE = 10;
+  async function handleImportKnown() {
+    setImporting(true);
+    try {
+      await importKnownDomains();
+      setPage(0);
+      refresh();
+    } finally {
+      setImporting(false);
+    }
+  }
 
   const [domain, setDomain] = useState("");
   const [toolName, setToolName] = useState("");
@@ -107,9 +121,14 @@ export default function DomainCatalogPage() {
       <PageHeader
         title={t("domain_catalog.title")}
         actions={
+          <>
+          <button type="button" className="btn btn-sm" onClick={handleImportKnown} disabled={importing} style={{ marginRight: 8 }}>
+            {importing ? t("common.loading") : t("domain_catalog.import_known")}
+          </button>
           <button className="btn btn-primary btn-sm" onClick={() => setShowForm((s) => !s)}>
             {showForm ? t("domain_catalog.cancel") : t("domain_catalog.new")}
           </button>
+        </>
         }
       />
       <div className="content">
@@ -188,7 +207,8 @@ export default function DomainCatalogPage() {
           <div className="panel-header">
             <h2>{t("domain_catalog.table_title")}</h2>
           </div>
-          <table>
+          <div id="dc-scroll" style={{ overflowX: "auto", width: "100%" }}>
+          <table style={{ minWidth: 720 }}>
             <thead>
               <tr>
                 <th>{t("domain_catalog.col_domain")}</th>
@@ -210,7 +230,7 @@ export default function DomainCatalogPage() {
                   <td colSpan={6}>{t("domain_catalog.empty")}</td>
                 </tr>
               )}
-              {entries.map((entry) => (
+              {entries.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE).map((entry) => (
                 <tr key={entry.id}>
                   <td className="mono">{entry.domain}</td>
                   <td>{entry.tool_name || "—"}</td>
@@ -221,13 +241,15 @@ export default function DomainCatalogPage() {
                   <td className="mono">
                     {new Date(entry.created_at).toLocaleDateString(i18n.language)}
                   </td>
-                  <td className="u-nowrap">
-                    <div className="u-btn-row">
+                  <td className="u-nowrap" style={{ textAlign: "right", verticalAlign: "middle" }}>
+                    <div style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
                       {entry.policy_status !== "blocked" && (
                         <button
-                          className="btn btn-sm btn-danger"
+                          className="btn btn-sm"
                           disabled={busyId === entry.id}
                           onClick={() => handleStatusChange(entry, "blocked")}
+                          title={t("domain_catalog.action_block")}
+                          style={{ padding: "3px 10px", fontSize: 12, color: "#dc2626", borderColor: "#dc2626" }}
                         >
                           {t("domain_catalog.action_block")}
                         </button>
@@ -237,6 +259,8 @@ export default function DomainCatalogPage() {
                           className="btn btn-sm"
                           disabled={busyId === entry.id}
                           onClick={() => handleStatusChange(entry, "allowed")}
+                          title={t("domain_catalog.action_allow")}
+                          style={{ padding: "3px 10px", fontSize: 12, color: "#2f9e63", borderColor: "#2f9e63" }}
                         >
                           {t("domain_catalog.action_allow")}
                         </button>
@@ -245,6 +269,7 @@ export default function DomainCatalogPage() {
                         className="btn btn-sm"
                         disabled={busyId === entry.id}
                         onClick={() => handleDelete(entry.id)}
+                        style={{ padding: "3px 10px", fontSize: 12, color: "var(--text-muted,#64748b)" }}
                       >
                         {t("domain_catalog.delete")}
                       </button>
@@ -254,6 +279,14 @@ export default function DomainCatalogPage() {
               ))}
             </tbody>
           </table>
+          </div>
+          {entries.length > PAGE_SIZE && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 4px", fontSize: 13 }}>
+              <button type="button" className="btn btn-sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>{t("common.prev")}</button>
+              <span className="hint-text">{page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, entries.length)} / {entries.length}</span>
+              <button type="button" className="btn btn-sm" disabled={(page + 1) * PAGE_SIZE >= entries.length} onClick={() => setPage((p) => p + 1)}>{t("common.next")}</button>
+            </div>
+          )}
         </div>
       </div>
     </>

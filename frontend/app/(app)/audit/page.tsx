@@ -38,11 +38,13 @@ export default function AuditLogsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [entityType, setEntityType] = useState("");
+  const [auditPage, setAuditPage] = useState(0);
+  const AUDIT_PAGE_SIZE = 12;
 
   function refresh(filterType: string) {
     setLoading(true);
     listAuditLogs(filterType ? { entity_type: filterType } : undefined)
-      .then(setLogs)
+      .then((data) => { setLogs(data); setAuditPage(0); })
       .finally(() => setLoading(false));
   }
 
@@ -94,7 +96,7 @@ export default function AuditLogsPage() {
                   <td colSpan={6}>{t("audit.empty")}</td>
                 </tr>
               )}
-              {logs.map((log) => (
+              {logs.slice(auditPage * AUDIT_PAGE_SIZE, auditPage * AUDIT_PAGE_SIZE + AUDIT_PAGE_SIZE).map((log) => (
                 <tr key={log.id}>
                   <td className="mono">
                     {new Date(log.created_at).toLocaleString(i18n.language)}
@@ -116,6 +118,13 @@ export default function AuditLogsPage() {
               ))}
             </tbody>
           </table>
+          {logs.length > AUDIT_PAGE_SIZE && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 4px", fontSize: 13 }}>
+              <button type="button" className="btn btn-sm" disabled={auditPage === 0} onClick={() => setAuditPage((p) => Math.max(0, p - 1))}>{t("common.prev")}</button>
+              <span className="hint-text">{auditPage * AUDIT_PAGE_SIZE + 1}-{Math.min((auditPage + 1) * AUDIT_PAGE_SIZE, logs.length)} / {logs.length}</span>
+              <button type="button" className="btn btn-sm" disabled={(auditPage + 1) * AUDIT_PAGE_SIZE >= logs.length} onClick={() => setAuditPage((p) => p + 1)}>{t("common.next")}</button>
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -22,7 +22,9 @@
     "deleted": "Deleted",
     "search": "Search",
     "filter": "Filter",
-    "all": "All"
+    "all": "All",
+    "prev": "Prev",
+    "next": "Next"
   },
   "auth": {
     "brand": "AI CONTROL TOWER",
@@ -690,7 +692,8 @@
     "empty": "No domains in the catalog yet.",
     "action_block": "Block",
     "action_allow": "Allow",
-    "delete": "Remove"
+    "delete": "Remove",
+    "import_known": "Import known domains"
   },
   "ingestion_sources": {
     "title": "Ingestion Sources",

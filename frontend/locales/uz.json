@@ -22,7 +22,9 @@
     "deleted": "O'chirilgan",
     "search": "Qidirish",
     "filter": "Filtr",
-    "all": "Hammasi"
+    "all": "Hammasi",
+    "prev": "Oldingi",
+    "next": "Keyingi"
   },
   "auth": {
     "brand": "AI CONTROL TOWER",
@@ -690,7 +692,8 @@
     "empty": "Katalogda hali domenlar yo'q.",
     "action_block": "Bloklash",
     "action_allow": "Ruxsat berish",
-    "delete": "O'chirish"
+    "delete": "O'chirish",
+    "import_known": "Ma'lum domenlarni import qilish"
   },
   "ingestion_sources": {
     "title": "Telemetriya manbalari",
