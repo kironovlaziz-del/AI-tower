@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="ACT-og-image.png" width="160" alt="AI Control Tower logo">
+  <img src="ACT-logo-full.png" width="190" alt="AI Control Tower logo">
 </p>
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
