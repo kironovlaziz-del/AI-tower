@@ -1,6 +1,8 @@
 <p align="center">
-  <img src="ACT-logo-full.png" width="180" alt="AI Control Tower logo">
+  <img src="ACT-logo-full.png" width="160" alt="AI Control Tower logo">
 </p>
+
+<h1 align="center">AI Control Tower</h1>
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI](https://github.com/kironovlaziz-del/AI-tower/actions/workflows/ci.yml/badge.svg)](https://github.com/kironovlaziz-del/AI-tower/actions/workflows/ci.yml)
