@@ -2,7 +2,9 @@
   <img src="docs/hero-graph.svg" width="720" alt="AI Control Tower — live delegation graph with in-browser signature verification">
 </p>
 
-<h1 align="center">AI Control Tower</h1>
+<p align="center">
+  <img src="ACT-logo-full.png" width="360" alt="AI Control Tower">
+</p>
 
 <p align="center">
   <b>See and govern every AI in your company.</b><br>
