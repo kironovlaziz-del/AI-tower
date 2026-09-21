@@ -1,0 +1,114 @@
+# ---- AI Control Tower — full stack, one command ----
+# Usage:  docker compose -f docker-compose.full.yml up --build
+# Then open http://localhost:3000  ·  login: admin@demo.local / demo12345
+#
+# This brings up EVERYTHING: Postgres, Redis, backend (with auto-migrations
+# and a seeded demo admin), Celery worker, and the frontend. For local
+# development against host-run backend/frontend, use the plain
+# docker-compose.yml (db + redis only) instead.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ai_ct_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ai_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ai_password}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_control_tower}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ai_user} -d ${POSTGRES_DB:-ai_control_tower}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai_ct_redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-ai_password}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-ai_password}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai_ct_backend
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: development
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me-0123456789abcdef0123456789abcdef}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ai_password}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_control_tower}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-ai_password}
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai_ct_celery
+    depends_on:
+      backend:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: development
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me-0123456789abcdef0123456789abcdef}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ai_password}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_control_tower}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-ai_password}
+    # celery doesn't need to re-migrate/seed; skip entrypoint extras by
+    # overriding the command (entrypoint still waits for db, which is fine)
+    command: ["celery", "-A", "app.core.celery_app", "worker", "--loglevel=info", "--concurrency=1"]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+    container_name: ai_ct_frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
+  redis_data:

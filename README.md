@@ -196,6 +196,26 @@ collectors/discovery/      network discovery (DNS SRV, mDNS, LLMNR,
 - ~4 GB RAM minimum for CPU-only training; 16+ GB and a GPU for
   transformer fine-tuning
 
+## ⚡ Try it in 2 minutes (Docker)
+
+The fastest way to see it running — the whole stack (database, backend with
+auto-migrations, workers, and frontend) in one command:
+
+```bash
+git clone https://github.com/kironovlaziz-del/AI-tower.git
+cd AI-tower
+docker compose -f docker-compose.full.yml up --build
+```
+
+Then open **http://localhost:3000** and log in:
+
+| Organization | Email | Password |
+|---|---|---|
+| `demo` | `admin@demo.com` | `demo12345` |
+
+> For local development against a host-run backend/frontend (hot reload),
+> follow the manual **Quick Start** below instead.
+
 ## Quick Start (Local Development)
 
 ### 1. Clone
