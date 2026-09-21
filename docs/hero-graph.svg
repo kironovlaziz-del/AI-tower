@@ -1,0 +1,65 @@
+<svg viewBox="0 0 720 260" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',system-ui,sans-serif">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#152036"/>
+      <stop offset="100%" stop-color="#0a0e17"/>
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="720" height="260" rx="14" fill="url(#bg)"/>
+
+  <!-- edges -->
+  <g stroke-width="1.6" opacity="0.6">
+    <line x1="360" y1="60" x2="220" y2="130" stroke="#22d3ee"/>
+    <line x1="360" y1="60" x2="500" y2="128" stroke="#22d3ee"/>
+    <line x1="500" y1="128" x2="380" y2="205" stroke="#ef4444" stroke-dasharray="6 4"/>
+  </g>
+
+  <!-- moving particles on healthy edges -->
+  <circle r="3.5" fill="#4ade80" filter="url(#glow)">
+    <animateMotion dur="2.4s" repeatCount="indefinite" path="M360,60 L220,130"/>
+  </circle>
+  <circle r="3.5" fill="#4ade80" filter="url(#glow)">
+    <animateMotion dur="2.4s" begin="0.8s" repeatCount="indefinite" path="M360,60 L500,128"/>
+  </circle>
+
+  <!-- nodes with pulse -->
+  <g>
+    <!-- orchestrator -->
+    <circle cx="360" cy="60" r="13" fill="#3b82f6" filter="url(#glow)"/>
+    <circle cx="360" cy="60" r="13" fill="none" stroke="#3b82f6" stroke-width="2">
+      <animate attributeName="r" values="13;24;13" dur="2.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.7;0;0.7" dur="2.6s" repeatCount="indefinite"/>
+    </circle>
+    <text x="360" y="34" text-anchor="middle" fill="#8a97b1" font-size="12" font-family="monospace">orchestrator</text>
+
+    <!-- analyst -->
+    <circle cx="220" cy="130" r="12" fill="#3b82f6" filter="url(#glow)"/>
+    <text x="220" y="162" text-anchor="middle" fill="#8a97b1" font-size="12" font-family="monospace">analyst</text>
+
+    <!-- writer -->
+    <circle cx="500" cy="128" r="12" fill="#3b82f6" filter="url(#glow)"/>
+    <text x="500" y="160" text-anchor="middle" fill="#8a97b1" font-size="12" font-family="monospace">writer</text>
+
+    <!-- finance (violation) -->
+    <circle cx="380" cy="205" r="13" fill="#ef4444" filter="url(#glow)"/>
+    <circle cx="380" cy="205" r="13" fill="none" stroke="#ef4444" stroke-width="2">
+      <animate attributeName="r" values="13;22;13" dur="1.8s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.8;0;0.8" dur="1.8s" repeatCount="indefinite"/>
+    </circle>
+    <text x="380" y="236" text-anchor="middle" fill="#fca5a5" font-size="12" font-family="monospace">finance ✕ blocked</text>
+  </g>
+
+  <!-- verified badge, top-right -->
+  <g transform="translate(548,28)">
+    <rect x="0" y="0" width="150" height="30" rx="15" fill="#0d1b16" stroke="#22c55e" stroke-width="1.2"/>
+    <circle cx="19" cy="15" r="8" fill="none" stroke="#22c55e" stroke-width="1.6"/>
+    <path d="M15 15 L18 18 L23 12" stroke="#22c55e" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="34" y="19" fill="#22c55e" font-size="11" font-family="monospace">verified offline</text>
+    <animate attributeName="opacity" values="0.4;1;0.4" dur="3s" repeatCount="indefinite"/>
+  </g>
+
+</svg>

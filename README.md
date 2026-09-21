@@ -1,25 +1,72 @@
 <p align="center">
-  <img src="ACT-logo-full.png" width="190" alt="AI Control Tower logo">
+  <img src="docs/hero-graph.svg" width="720" alt="AI Control Tower — live delegation graph with in-browser signature verification">
 </p>
 
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![CI](https://github.com/kironovlaziz-del/AI-tower/actions/workflows/ci.yml/badge.svg)](https://github.com/kironovlaziz-del/AI-tower/actions/workflows/ci.yml)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+<h1 align="center">AI Control Tower</h1>
 
-# AI Control Tower
+<p align="center">
+  <b>See and govern every AI in your company.</b><br>
+  From an employee pasting into ChatGPT to autonomous agents acting on their own —<br>
+  watch it, control it, and <b>prove</b> every decision was authorized. Self-hosted, no external SaaS.
+</p>
 
-An open-source platform for governance, oversight, and audit of
-enterprise AI usage. It centralizes policies, approvals, request
-tracing, incidents, vendor risk, shadow AI detection, and an MLOps
-layer for training and running custom models — all self-hosted, with
-no external SaaS dependency.
+<p align="center">
+  <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
+  <a href="https://github.com/kironovlaziz-del/AI-tower/actions/workflows/ci.yml"><img src="https://github.com/kironovlaziz-del/AI-tower/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/github/stars/kironovlaziz-del/AI-tower?style=flat&color=yellow" alt="Stars">
+  <a href="CODE_OF_CONDUCT.md"><img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg" alt="Contributor Covenant"></a>
+  <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
+</p>
 
-> **Administrators:** for how to *use* the running platform (day-to-day
-> operations in the web UI, deploying the endpoint agent and browser
-> extension), see **[USER_GUIDE.md](USER_GUIDE.md)** (English) or
-> **[USER_GUIDE.uz.md](USER_GUIDE.uz.md)** (O‘zbekcha). This README is
-> for developers who build, deploy, and extend the platform.
+<p align="center">
+  <a href="#-quick-start"><b>🚀 Quick Start</b></a> &nbsp;·&nbsp;
+  <a href="#-what-makes-it-different"><b>✨ Why it's different</b></a> &nbsp;·&nbsp;
+  <a href="USER_GUIDE.md"><b>📖 Docs</b></a> &nbsp;·&nbsp;
+  <a href="#-what-it-does"><b>🧩 Features</b></a>
+</p>
+
+---
+
+> **AI entered your company through every door at once** — shadow AI on laptops,
+> autonomous agents delegating to each other, and no way to *prove* who authorized
+> what. Most governance tools watch one door. **AI Control Tower covers them all,
+> under one set of rules.**
+
+## ✨ What makes it different
+
+### 🔐 Verifiable Agent Governance — nobody else does this
+
+When one AI agent delegates a task to another, the handoff is **signed with Ed25519**.
+Open the live delegation map, click any edge, and **verify the signature right in your
+own browser** — without trusting the server. The server holds only the public key; it
+can verify, never forge.
+
+This is the *verifiable accountability* the EU AI Act asks for — made **clickable**.
+An auditor confirms who authorized what, and the math checks out on their machine.
+
+<p align="center">
+  <img src="docs/hero-graph.svg" width="620" alt="Delegation graph: agents delegate, one is blocked, signatures verified offline">
+</p>
+
+> 🟦 active agent &nbsp; 🟥 policy violation &nbsp; — verified delegation &nbsp; ┈ blocked chain &nbsp; ✓ verified in your browser
+
+---
+
+## 🧩 Four layers of control, one tower
+
+|  | Layer | For | What it does |
+|--|-------|-----|--------------|
+| 🛡️ | **Policy & Prompt Firewall** | everyone | Secrets (cards, keys, IDs) masked before any prompt leaves. Every call logged. Rules built visually — no JSON required. |
+| 👁️ | **Shadow AI Monitor** | unsanctioned AI | Endpoint agent finds local models; browser extension warns before a secret is pasted; passive network discovery — nothing auto-connects. |
+| 🤖 | **Agent Governance** | autonomous agents | Registry with scoped tools & delegation limits; an agent can never grant more than it holds; kill-switch; the live verifiable graph above. |
+| 🧠 | **Build your own AI** | MLOps, simplified | Guided wizard, knowledge bases (RAG), train & deploy — for non-technical users. |
+
+## 🖥️ Governed access to any LLM
+
+Chat with any connected provider (OpenAI, Groq, Anthropic, …) **through the governance
+layer**: your prompt is scanned and secrets are masked *before* it leaves, blocked terms
+are rejected, and every request is logged to the Usage Registry. Not just monitoring —
+real policy applied to live traffic.
 
 ## What It Does
 
