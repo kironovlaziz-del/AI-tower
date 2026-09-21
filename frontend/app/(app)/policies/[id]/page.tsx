@@ -2,13 +2,15 @@
 
 import { Form } from "@/components/Form";
 import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { PolicyRuleBuilder } from "@/components/PolicyRuleBuilder";
 import { StatusPill } from "@/components/Pill";
 import {
+  archivePolicy,
+  activatePolicy,
   approvePolicyVersion,
   createPolicyVersion,
   getPolicy,
@@ -20,6 +22,20 @@ export default function PolicyDetailPage() {
   const params = useParams<{ id: string }>();
   const policyId = Number(params.id);
   const { t, i18n } = useTranslation();
+  const router = useRouter();
+  const [statusBusy, setStatusBusy] = useState(false);
+
+  async function reloadPolicy() {
+    try { const p = await getPolicy(policyId); setPolicy(p); } catch {}
+  }
+  async function handleArchive() {
+    setStatusBusy(true);
+    try { await archivePolicy(policyId); await reloadPolicy(); } finally { setStatusBusy(false); }
+  }
+  async function handleActivate() {
+    setStatusBusy(true);
+    try { await activatePolicy(policyId); await reloadPolicy(); } finally { setStatusBusy(false); }
+  }
 
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [versions, setVersions] = useState<PolicyVersion[]>([]);
@@ -90,7 +106,18 @@ export default function PolicyDetailPage() {
 
   return (
     <>
-      <PageHeader title={policy.name} />
+      <PageHeader
+        title={policy.name}
+        actions={
+          <div style={{ display: "inline-flex", gap: 8 }}>
+            {policy.status === "active" ? (
+              <button className="btn btn-sm" onClick={handleArchive} disabled={statusBusy}>{t("policies.detail.archive")}</button>
+            ) : (
+              <button className="btn btn-sm btn-primary" onClick={handleActivate} disabled={statusBusy}>{t("policies.detail.activate")}</button>
+            )}
+          </div>
+        }
+      />
       <div className="content">
         <div className="breadcrumb">
           <Link href="/policies">{t("policies.detail.breadcrumb")}</Link> / #{policy.id}

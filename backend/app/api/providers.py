@@ -20,6 +20,7 @@ from fastapi import HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 import httpx
+from app.models.ai_policy import AIPolicy, AIPolicyVersion
 
 router = APIRouter()
 
@@ -92,6 +93,40 @@ class ProviderChatResponse(BaseModel):
     blocked_reason: str | None = None
 
 
+async def _active_policy_rules(db, org_id: int) -> dict:
+    """Merged rules from ALL active policies of the org: the latest APPROVED
+    version of each active policy contributes its blocked_terms, and if any
+    requires approval, the whole request does. This way every active rule
+    applies, not just one arbitrary policy."""
+    pres = await db.execute(
+        select(AIPolicy).where(AIPolicy.org_id == org_id, AIPolicy.status == "active")
+    )
+    policies = list(pres.scalars().all())
+    blocked_terms: list[str] = []
+    require_approval = False
+    for policy in policies:
+        vres = await db.execute(
+            select(AIPolicyVersion)
+            .where(AIPolicyVersion.policy_id == policy.id, AIPolicyVersion.approved_by.isnot(None))
+            .order_by(AIPolicyVersion.version.desc()).limit(1)
+        )
+        version = vres.scalar_one_or_none()
+        if not version:
+            continue
+        rules = version.rules_json or {}
+        for term in (rules.get("blocked_terms") or []):
+            if term not in blocked_terms:
+                blocked_terms.append(term)
+        if rules.get("effect") == "require_approval":
+            require_approval = True
+    out: dict = {}
+    if blocked_terms:
+        out["blocked_terms"] = blocked_terms
+    if require_approval:
+        out["effect"] = "require_approval"
+    return out
+
+
 @router.post("/{provider_id}/chat", response_model=ProviderChatResponse)
 async def governed_chat(
     provider_id: int,
@@ -115,8 +150,25 @@ async def governed_chat(
     if not provider:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
 
-    # 1. firewall the user's message
-    fw = prompt_firewall.scan(data.message, language="en")
+    # 1. firewall the user's message, enforcing the org's active policy
+    active_policy_rules = await _active_policy_rules(db, current_user.org_id)
+    blocked_terms = active_policy_rules.get("blocked_terms") or []
+    fw = prompt_firewall.scan(data.message, blocked_terms=blocked_terms, language="en")
+
+    # policy may require human approval for every request under it
+    if active_policy_rules.get("effect") == "require_approval" and not fw.blocked:
+        db.add(AIRequest(
+            org_id=current_user.org_id, user_id=current_user.id, provider_id=provider.id,
+            input_text_encrypted=encrypt_secret(data.message),
+            masked_input_text=fw.masked_text, status="pending_approval",
+            purpose="playground_chat", firewall_flags=fw.flags,
+        ))
+        await db.commit()
+        return ProviderChatResponse(
+            answer="", blocked=True,
+            blocked_reason="This request requires human approval before it can run (per active policy).",
+            flags=fw.flags,
+        )
     if fw.blocked:
         # log the blocked attempt too
         db.add(AIRequest(

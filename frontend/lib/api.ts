@@ -184,6 +184,17 @@ export async function createPolicyVersion(
   return data;
 }
 
+export async function archivePolicy(id: number) {
+  const { data } = await api.post(`/policies/${id}/archive`);
+  return data;
+}
+
+export async function activatePolicy(id: number) {
+  const { data } = await api.post(`/policies/${id}/activate`);
+  return data;
+}
+
+
 export async function approvePolicyVersion(policyId: number, versionId: number) {
   const { data } = await api.post<PolicyVersion>(
     `/policies/${policyId}/versions/${versionId}/approve`

@@ -374,7 +374,12 @@
       "approved": "tasdiqlangan",
       "pending": "kutilmoqda",
       "approve": "Tasdiqlash",
-      "loading": "Yuklanmoqda…"
+      "loading": "Yuklanmoqda…",
+      "archive": "Arxivlash",
+      "activate": "Faollashtirish",
+      "delete": "O'chirish",
+      "delete_confirm": "Ushbu siyosat va uning barcha versiyalari o'chirilsinmi? Buni qaytarib bo'lmaydi.",
+      "archived_note": "Ushbu siyosat arxivlangan va kuchda emas."
     }
   },
   "use_cases": {

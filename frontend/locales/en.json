@@ -374,7 +374,12 @@
       "approved": "approved",
       "pending": "pending",
       "approve": "Approve",
-      "loading": "Loading…"
+      "loading": "Loading…",
+      "archive": "Archive",
+      "activate": "Activate",
+      "delete": "Delete",
+      "delete_confirm": "Delete this policy and all its versions? This cannot be undone.",
+      "archived_note": "This policy is archived and not in effect."
     }
   },
   "use_cases": {

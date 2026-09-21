@@ -90,3 +90,41 @@ async def approve_policy_version(
         {"policy_id": policy_id, "version": version.version},
     )
     return version
+
+
+@router.post("/{policy_id}/archive", response_model=PolicyOut)
+async def archive_policy(
+    policy_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.admin)),
+):
+    """Archive a policy — it stops taking effect but its history is kept
+    for audit. Reversible via /activate."""
+    service = PolicyService(db)
+    policy = await service.get_policy(policy_id, current_user.org_id)
+    policy.status = "archived"
+    await db.commit()
+    await db.refresh(policy)
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "policy", policy_id, "archived", {}
+    )
+    return policy
+
+
+@router.post("/{policy_id}/activate", response_model=PolicyOut)
+async def activate_policy(
+    policy_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.admin)),
+):
+    """Re-activate an archived/draft policy."""
+    service = PolicyService(db)
+    policy = await service.get_policy(policy_id, current_user.org_id)
+    policy.status = "active"
+    await db.commit()
+    await db.refresh(policy)
+    await AuditService(db).log(
+        current_user.org_id, current_user.id, "policy", policy_id, "activated", {}
+    )
+    return policy
+
