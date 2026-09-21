@@ -54,6 +54,35 @@ An auditor confirms who authorized what, and the math checks out on their machin
 
 ---
 
+## 📸 Screenshots
+
+<table>
+  <tr>
+    <td width="50%">
+      <b>Live delegation map</b><br>
+      <sub>Agents, delegations, violations — signatures verified in-browser</sub><br>
+      <img src="docs/screenshots/live-map.png" alt="Live delegation map">
+    </td>
+    <td width="50%">
+      <b>Dashboard</b><br>
+      <sub>Requests, incidents, training jobs, action trace at a glance</sub><br>
+      <img src="docs/screenshots/dashboard.png" alt="Dashboard">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <b>Provider Chat</b><br>
+      <sub>Chat any LLM through the governance layer — secrets masked, logged</sub><br>
+      <img src="docs/screenshots/provider-chat.png" alt="Governed provider chat">
+    </td>
+    <td width="50%">
+      <b>Connections</b><br>
+      <sub>Manage AI providers — keys encrypted, mock-mode without a key</sub><br>
+      <img src="docs/screenshots/connections.png" alt="Connections — AI providers">
+    </td>
+  </tr>
+</table>
+
 ## 🧩 Four layers of control, one tower
 
 |  | Layer | For | What it does |
