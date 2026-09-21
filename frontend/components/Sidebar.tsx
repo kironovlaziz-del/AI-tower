@@ -62,6 +62,7 @@ const NAV = [
       { href: "/training", labelKey: "sidebar.nav.training" },
       { href: "/deployments", labelKey: "sidebar.nav.deployments" },
       { href: "/playground", labelKey: "sidebar.nav.playground" },
+      { href: "/provider-chat", labelKey: "sidebar.nav.provider_chat" },
     ],
   },
   {

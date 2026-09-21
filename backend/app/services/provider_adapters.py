@@ -68,6 +68,13 @@ async def call_provider(
         return await _call_openai_compatible(
             api_key, base_url, default_model or "gpt-4o-mini", prompt, azure=True
         )
+    if provider_type == "groq":
+        return await _call_openai_compatible(
+            api_key,
+            base_url or "https://api.groq.com/openai/v1",
+            default_model or "llama-3.3-70b-versatile",
+            prompt,
+        )
     if provider_type == "anthropic":
         return await _call_anthropic(
             api_key,

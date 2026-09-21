@@ -4,12 +4,13 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/PageHeader";
 import { Form } from "@/components/Form";
-import { createProvider, listProviders, updateProvider } from "@/lib/api";
+import { createProvider, listProviders, updateProvider, listProviderModels } from "@/lib/api";
 import type { Provider } from "@/lib/types";
 
 const TYPE_DEFAULTS: Record<string, { base_url: string; default_model: string }> = {
   openai: { base_url: "https://api.openai.com/v1", default_model: "gpt-4o-mini" },
   anthropic: { base_url: "https://api.anthropic.com/v1", default_model: "claude-3-5-haiku-20241022" },
+  groq: { base_url: "https://api.groq.com/openai/v1", default_model: "openai/gpt-oss-120b" },
   azure_openai: { base_url: "", default_model: "gpt-4o-mini" },
   custom: { base_url: "", default_model: "" },
 };
@@ -54,6 +55,20 @@ function ConnectionCard({
   const [baseUrl, setBaseUrl] = useState(provider.base_url || "");
   const [defaultModel, setDefaultModel] = useState(provider.default_model || "");
   const [saving, setSaving] = useState(false);
+  const [models, setModels] = useState<string[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  async function handleLoadModels() {
+    setLoadingModels(true);
+    try {
+      const res = await listProviderModels(provider.id);
+      setModels(res.models || []);
+    } catch {
+      setModels([]);
+    } finally {
+      setLoadingModels(false);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -122,11 +137,24 @@ function ConnectionCard({
           </div>
           <div className="field" style={{ margin: 0 }}>
             <label>{t("connections.default_model")}</label>
-            <input
-              value={defaultModel}
-              onChange={(e) => setDefaultModel(e.target.value)}
-              placeholder={TYPE_DEFAULTS[provider.type]?.default_model || "model-name"}
-            />
+            <div style={{ display: "flex", gap: 8, minWidth: 0 }}>
+              {models.length > 0 ? (
+                <select value={defaultModel} onChange={(e) => setDefaultModel(e.target.value)} style={{ flex: 1, minWidth: 0 }}>
+                  {!models.includes(defaultModel) && defaultModel && <option value={defaultModel}>{defaultModel}</option>}
+                  {models.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              ) : (
+                <input
+                  value={defaultModel}
+                  onChange={(e) => setDefaultModel(e.target.value)}
+                  placeholder={TYPE_DEFAULTS[provider.type]?.default_model || "model-name"}
+                  style={{ flex: 1 }}
+                />
+              )}
+              <button type="button" className="btn btn-sm" onClick={handleLoadModels} disabled={loadingModels} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>
+                {loadingModels ? t("connections.loading_models") : t("connections.load_models")}
+              </button>
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>
@@ -284,6 +312,7 @@ export default function ConnectionsPage() {
                     <select id="type" value={type} onChange={(e) => handleTypeChange(e.target.value)}>
                       <option value="openai">openai</option>
                       <option value="anthropic">anthropic</option>
+                      <option value="groq">groq</option>
                       <option value="azure_openai">azure_openai</option>
                       <option value="custom">custom</option>
                     </select>

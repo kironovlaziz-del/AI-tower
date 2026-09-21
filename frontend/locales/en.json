@@ -85,7 +85,8 @@
       "agent_chains": "Delegation Chains",
       "agent_approvals": "Pending Approvals",
       "agent_map": "Live Map",
-      "agent_policies": "Agent Policies"
+      "agent_policies": "Agent Policies",
+      "provider_chat": "Provider Chat"
     },
     "logout": "Sign out",
     "role_admin": "admin",
@@ -784,7 +785,9 @@
     "configure_access": "Configure access",
     "leave_blank": "(leave blank to keep unchanged)",
     "save": "Save",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "load_models": "Load models",
+    "loading_models": "Loading…"
   },
   "notifications": {
     "title": "Notification Service",
@@ -1289,5 +1292,22 @@
     "rules": "Rules",
     "create": "Create policy",
     "create_failed": "Could not create the policy."
+  },
+  "provider_chat": {
+    "title": "Provider Chat",
+    "hint": "Chat with a connected AI provider through the governance layer: your prompt is scanned and secrets are masked before it leaves, and every request is logged to the Usage Registry.",
+    "providers": "Providers",
+    "no_providers": "No active providers. Connect one in Connections.",
+    "select_provider": "Select a provider",
+    "empty": "Pick a provider and start chatting.",
+    "placeholder": "Type a message…",
+    "send": "Send",
+    "sending": "Sending…",
+    "masked": "Masked before sending",
+    "blocked": "Blocked by policy",
+    "failed": "Request failed.",
+    "provider": "Provider",
+    "model": "Model",
+    "no_models": "No models available"
   }
 }

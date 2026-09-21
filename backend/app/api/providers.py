@@ -10,6 +10,16 @@ from app.services.audit_service import AuditService
 from app.models.user import User
 from app.api.deps import get_current_user, require_role
 from app.models.user import UserRole
+from app.models.ai_provider import AIProvider
+from app.core.crypto import decrypt_secret
+from app.services import provider_adapters
+from app.services import prompt_firewall
+from app.models.ai_request import AIRequest
+from app.core.crypto import encrypt_secret
+from fastapi import HTTPException, status
+from pydantic import BaseModel
+from sqlalchemy import select
+import httpx
 
 router = APIRouter()
 
@@ -66,3 +76,126 @@ async def update_provider(
         data.model_dump(exclude_unset=True),
     )
     return provider
+
+
+class ProviderChatRequest(BaseModel):
+    message: str
+    system_prompt: str | None = None
+    model: str | None = None
+
+
+class ProviderChatResponse(BaseModel):
+    answer: str
+    masked: bool = False
+    flags: list[str] = []
+    blocked: bool = False
+    blocked_reason: str | None = None
+
+
+@router.post("/{provider_id}/chat", response_model=ProviderChatResponse)
+async def governed_chat(
+    provider_id: int,
+    data: ProviderChatRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Governed chat with a connected provider: the prompt is run through the
+    prompt firewall (secrets masked, blocked terms rejected) BEFORE it
+    leaves for the provider, the call is made, and the request is logged to
+    the Usage Registry. This is the governance-layer difference from
+    hitting the provider directly.
+    """
+    result = await db.execute(
+        select(AIProvider).where(
+            AIProvider.id == provider_id, AIProvider.org_id == current_user.org_id
+        )
+    )
+    provider = result.scalar_one_or_none()
+    if not provider:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
+
+    # 1. firewall the user's message
+    fw = prompt_firewall.scan(data.message, language="en")
+    if fw.blocked:
+        # log the blocked attempt too
+        db.add(AIRequest(
+            org_id=current_user.org_id, user_id=current_user.id, provider_id=provider.id,
+            input_text_encrypted=encrypt_secret(data.message), status="blocked",
+            purpose="playground_chat", firewall_flags=fw.flags,
+        ))
+        await db.commit()
+        return ProviderChatResponse(
+            answer="", blocked=True, blocked_reason=fw.blocked_reason or "Blocked by policy",
+            flags=fw.flags,
+        )
+
+    safe_message = fw.masked_text
+    prompt = f"{data.system_prompt}\n\n{safe_message}" if data.system_prompt else safe_message
+
+    # 2. call provider with the MASKED prompt
+    api_key = decrypt_secret(provider.api_key_encrypted) if provider.api_key_encrypted else None
+    chosen_model = data.model or provider.default_model
+    answer, _raw = await provider_adapters.call_provider(
+        provider.type, api_key, provider.base_url, chosen_model, prompt
+    )
+
+    # 3. log to Usage Registry
+    db.add(AIRequest(
+        org_id=current_user.org_id, user_id=current_user.id, provider_id=provider.id,
+        input_text_encrypted=encrypt_secret(data.message),
+        masked_input_text=safe_message, status="completed",
+        purpose="playground_chat", firewall_flags=fw.flags,
+    ))
+    await db.commit()
+
+    return ProviderChatResponse(
+        answer=answer, masked=bool(fw.flags), flags=fw.flags,
+    )
+
+
+@router.get("/{provider_id}/models")
+async def list_provider_models(
+    provider_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    List models the provider actually offers. For OpenAI-compatible
+    providers (openai, groq, azure_openai, custom with a base_url) this
+    queries their /models endpoint with the stored key, so the UI can show
+    a real, current list instead of a free-text field.
+    """
+    result = await db.execute(
+        select(AIProvider).where(
+            AIProvider.id == provider_id, AIProvider.org_id == current_user.org_id
+        )
+    )
+    provider = result.scalar_one_or_none()
+    if not provider:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
+
+    api_key = decrypt_secret(provider.api_key_encrypted) if provider.api_key_encrypted else None
+    if not api_key:
+        return {"models": [], "note": "No API key stored for this provider."}
+
+    # resolve base url per type
+    base = provider.base_url
+    if provider.type == "groq":
+        base = base or "https://api.groq.com/openai/v1"
+    elif provider.type == "openai":
+        base = base or "https://api.openai.com/v1"
+    if not base:
+        return {"models": [], "note": "Model listing needs a base_url for this provider type."}
+
+    url = base.rstrip("/") + "/models"
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(url, headers={"Authorization": f"Bearer {api_key}"})
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not list models: {e}")
+
+    models = sorted(m.get("id") for m in data.get("data", []) if m.get("id"))
+    return {"models": models}

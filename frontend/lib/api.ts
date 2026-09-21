@@ -192,6 +192,28 @@ export async function approvePolicyVersion(policyId: number, versionId: number) 
 }
 
 // ---- Providers (Vendor Risk Desk) ----
+export interface ProviderChatResult {
+  answer: string;
+  masked: boolean;
+  flags: string[];
+  blocked: boolean;
+  blocked_reason?: string | null;
+}
+
+export async function listProviderModels(providerId: number) {
+  const { data } = await api.get<{ models: string[]; note?: string }>(`/providers/${providerId}/models`);
+  return data;
+}
+
+export async function providerChat(providerId: number, message: string, systemPrompt?: string, model?: string) {
+  const { data } = await api.post<ProviderChatResult>(`/providers/${providerId}/chat`, {
+    message,
+    system_prompt: systemPrompt,
+    model,
+  });
+  return data;
+}
+
 export async function listProviders() {
   const { data } = await api.get<Page<Provider>>("/providers/");
   return unwrap(data);
