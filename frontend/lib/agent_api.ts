@@ -9,6 +9,7 @@ import type {
   AgentActionT,
   AgentPolicyT,
   AgentIncidentT,
+  EscalationSummaryRow,
 } from "./agent_types";
 
 function items<T>(p: Page<T>): T[] {
@@ -110,9 +111,21 @@ export async function createAgentPolicy(payload: {
 }
 
 // ---- Incidents ----
-export async function listAgentIncidents() {
-  const { data } = await api.get<Page<AgentIncidentT>>("/agents/incidents/");
-  return items(data);
+export async function listAgentIncidents(params?: {
+  incident_type?: string;
+  unresolved_only?: boolean;
+  skip?: number;
+  limit?: number;
+}) {
+  const { data } = await api.get<Page<AgentIncidentT>>("/agents/incidents/", { params });
+  return data;
+}
+
+export async function getEscalationSummary() {
+  const { data } = await api.get<{ agents: EscalationSummaryRow[] }>(
+    "/agents/incidents/escalation-summary",
+  );
+  return data;
 }
 
 // ---- Governance graph ----

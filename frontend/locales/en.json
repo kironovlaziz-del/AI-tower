@@ -86,7 +86,8 @@
       "agent_approvals": "Pending Approvals",
       "agent_map": "Live Map",
       "agent_policies": "Agent Policies",
-      "provider_chat": "Provider Chat"
+      "provider_chat": "Provider Chat",
+      "agent_incidents": "Rejected Escalations"
     },
     "logout": "Sign out",
     "role_admin": "admin",
@@ -1314,5 +1315,20 @@
     "provider": "Provider",
     "model": "Model",
     "no_models": "No models available"
+  },
+  "agent_incidents": {
+    "title": "Rejected Escalations",
+    "hint": "Every time a sub-agent tried to use a capability it was never granted, it's rejected and logged here. Repeat offenders are surfaced first.",
+    "repeat_offenders": "Repeat offenders",
+    "rejected_escalations": "Escalation attempts",
+    "agent": "Agent",
+    "attempts": "attempts",
+    "last": "last",
+    "over_requested": "Over-requested",
+    "parent_had": "Parent had",
+    "chain": "Chain",
+    "when": "When",
+    "unresolved_only": "Unresolved only",
+    "no_escalations": "No escalation attempts recorded."
   }
 }

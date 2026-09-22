@@ -394,14 +394,52 @@ async def list_agent_policies(
 
 # ========================== Incidents ==========================
 
+@router.get("/incidents/escalation-summary")
+async def escalation_summary(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Per-agent count of capability-escalation attempts, worst first.
+    Answers 'which sub-agent keeps trying to escalate?' — the repeat-offender
+    view. A high count is a candidate for auto-review or kill-switch."""
+    from sqlalchemy import func as sqlfunc
+    result = await db.execute(
+        select(
+            AgentIncident.agent_id,
+            sqlfunc.count().label("attempts"),
+            sqlfunc.max(AgentIncident.created_at).label("last_attempt"),
+        )
+        .where(
+            AgentIncident.org_id == current_user.org_id,
+            AgentIncident.incident_type == "capability_escalation",
+        )
+        .group_by(AgentIncident.agent_id)
+        .order_by(sqlfunc.count().desc())
+    )
+    rows = result.all()
+    return {
+        "agents": [
+            {"agent_id": r.agent_id, "attempts": int(r.attempts),
+             "last_attempt": r.last_attempt.isoformat() if r.last_attempt else None}
+            for r in rows
+        ]
+    }
+
+
 @router.get("/incidents/", response_model=Page[AgentIncidentOut])
 async def list_agent_incidents(
     pagination: PaginationParams = Depends(),
+    incident_type: str | None = None,
+    unresolved_only: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     from sqlalchemy import func as sqlfunc
     base = select(AgentIncident).where(AgentIncident.org_id == current_user.org_id)
+    if incident_type:
+        base = base.where(AgentIncident.incident_type == incident_type)
+    if unresolved_only:
+        base = base.where(AgentIncident.resolved == False)  # noqa: E712
     total = await db.scalar(select(sqlfunc.count()).select_from(base.subquery()))
     result = await db.execute(
         base.order_by(AgentIncident.created_at.desc()).offset(pagination.skip).limit(pagination.limit)

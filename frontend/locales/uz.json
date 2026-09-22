@@ -86,7 +86,8 @@
       "agent_approvals": "Tasdiqlash kutilmoqda",
       "agent_map": "Jonli xarita",
       "agent_policies": "Agent siyosatlari",
-      "provider_chat": "Provayder chati"
+      "provider_chat": "Provayder chati",
+      "agent_incidents": "Rad etilgan eskalatsiyalar"
     },
     "logout": "Chiqish",
     "role_admin": "administrator",
@@ -1314,5 +1315,20 @@
     "provider": "Provayder",
     "model": "Model",
     "no_models": "Modellar mavjud emas"
+  },
+  "agent_incidents": {
+    "title": "Rad etilgan eskalatsiyalar",
+    "hint": "Sub-agent o'ziga berilmagan huquqdan foydalanmoqchi bo'lganda, u rad etiladi va shu yerda qayd etiladi. Takroriy urinishlar birinchi ko'rsatiladi.",
+    "repeat_offenders": "Takroriy buzuvchilar",
+    "rejected_escalations": "Eskalatsiya urinishlari",
+    "agent": "Agent",
+    "attempts": "urinish",
+    "last": "oxirgi",
+    "over_requested": "Ortiqcha so'ralgan",
+    "parent_had": "Ota-agentda bor edi",
+    "chain": "Zanjir",
+    "when": "Qachon",
+    "unresolved_only": "Faqat hal qilinmagan",
+    "no_escalations": "Eskalatsiya urinishlari qayd etilmagan."
   }
 }

@@ -87,6 +87,12 @@ export interface AgentIncidentT {
   created_at: string;
 }
 
+export interface EscalationSummaryRow {
+  agent_id: number;
+  attempts: number;
+  last_attempt: string | null;
+}
+
 // ---- Governance graph (live map) ----
 export interface GraphNodeT {
   id: number;
