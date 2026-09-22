@@ -27,7 +27,7 @@
     "next": "Next"
   },
   "auth": {
-    "brand": "AI CONTROL TOWER",
+    "brand": "PROVENZA",
     "login_title": "Sign in",
     "register_title": "New organization",
     "email": "Email",
@@ -1157,7 +1157,7 @@
   },
   "extension_banner": {
     "title": "Browser protection available",
-    "desc": "Install the AI Control Tower extension to monitor AI usage and prevent sensitive-data leaks.",
+    "desc": "Install the Provenza extension to monitor AI usage and prevent sensitive-data leaks.",
     "guide_btn": "How to install",
     "hide_btn": "Hide",
     "install_guide": "Installation steps:",
@@ -1233,7 +1233,9 @@
     "tl_agent": "Agent",
     "tl_tool": "Tool",
     "tl_result": "Result",
-    "tl_reason": "Reason"
+    "tl_reason": "Reason",
+    "expired": "expired",
+    "expiring": "expiring"
   },
   "agent_approvals": {
     "title": "Agent Action Approvals",
@@ -1329,6 +1331,10 @@
     "chain": "Chain",
     "when": "When",
     "unresolved_only": "Unresolved only",
-    "no_escalations": "No escalation attempts recorded."
+    "no_escalations": "No escalation attempts recorded.",
+    "type_capability": "Capability escalation",
+    "type_ttl": "TTL escalation",
+    "type_expired": "Delegation expired",
+    "type_depth": "Depth exceeded"
   }
 }

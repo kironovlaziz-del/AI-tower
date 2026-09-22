@@ -49,8 +49,7 @@ export function Logo({
 
       {!collapsed && (
         <div style={{ fontSize: font, fontWeight: 600, letterSpacing: "0.02em", whiteSpace: "nowrap" }}>
-          <span style={{ color: "#22D3EE" }}>ai</span>{" "}
-          <span style={{ color: "#AFC4E4", fontWeight: 500 }}>control tower</span>
+          <span style={{ color: "#22D3EE" }}>proven</span><span style={{ color: "#AFC4E4", fontWeight: 500 }}>za</span>
         </div>
       )}
     </div>

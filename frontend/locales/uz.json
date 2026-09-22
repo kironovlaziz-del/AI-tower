@@ -27,7 +27,7 @@
     "next": "Keyingi"
   },
   "auth": {
-    "brand": "AI CONTROL TOWER",
+    "brand": "PROVENZA",
     "login_title": "Tizimga kirish",
     "register_title": "Yangi tashkilot",
     "email": "Email",
@@ -1157,7 +1157,7 @@
   },
   "extension_banner": {
     "title": "Brauzer himoyasi mavjud",
-    "desc": "AI foydalanishini kuzatish va maxfiy ma'lumotlar sizib chiqishining oldini olish uchun AI Control Tower kengaytmasini o'rnating.",
+    "desc": "AI foydalanishini kuzatish va maxfiy ma'lumotlar sizib chiqishining oldini olish uchun Provenza kengaytmasini o'rnating.",
     "guide_btn": "Qanday o'rnatiladi",
     "hide_btn": "Yashirish",
     "install_guide": "O'rnatish bosqichlari:",
@@ -1233,7 +1233,9 @@
     "tl_agent": "Agent",
     "tl_tool": "Vosita",
     "tl_result": "Natija",
-    "tl_reason": "Sabab"
+    "tl_reason": "Sabab",
+    "expired": "muddati o'tgan",
+    "expiring": "muddati tugayapti"
   },
   "agent_approvals": {
     "title": "Agent amallarini tasdiqlash",
@@ -1329,6 +1331,10 @@
     "chain": "Zanjir",
     "when": "Qachon",
     "unresolved_only": "Faqat hal qilinmagan",
-    "no_escalations": "Eskalatsiya urinishlari qayd etilmagan."
+    "no_escalations": "Eskalatsiya urinishlari qayd etilmagan.",
+    "type_capability": "Huquq eskalatsiyasi",
+    "type_ttl": "TTL eskalatsiyasi",
+    "type_expired": "Delegatsiya muddati tugagan",
+    "type_depth": "Chuqurlik oshib ketgan"
   }
 }

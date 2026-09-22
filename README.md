@@ -1,13 +1,14 @@
 <p align="center">
-  <img src="docs/hero-graph.svg" width="720" alt="AI Control Tower — live delegation graph with in-browser signature verification">
+  <img src="docs/hero-graph.svg" width="720" alt="Provenza — live delegation graph with in-browser signature verification">
 </p>
 
 <p align="center">
-  <img src="ACT-logo-full.png" width="360" alt="AI Control Tower">
+  <img src="provenza-logo-full.png" width="330" alt="Provenza">
 </p>
 
 <p align="center">
-  <b>See and govern every AI in your company.</b><br>
+  <b>Provenance for every AI action.</b><br>
+  <sub>See and govern every AI in your company — with provable accountability.</sub><br>
   From an employee pasting into ChatGPT to autonomous agents acting on their own —<br>
   watch it, control it, and <b>prove</b> every decision was authorized. Self-hosted, no external SaaS.
 </p>
@@ -31,7 +32,7 @@
 
 > **AI entered your company through every door at once** — shadow AI on laptops,
 > autonomous agents delegating to each other, and no way to *prove* who authorized
-> what. Most governance tools watch one door. **AI Control Tower covers them all,
+> what. Most governance tools watch one door. **Provenza covers them all,
 > under one set of rules.**
 
 ## ✨ What makes it different
