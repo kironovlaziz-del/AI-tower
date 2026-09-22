@@ -8,6 +8,21 @@ import { PageHeader } from "@/components/PageHeader";
 import { getChain, listAgentActions, listAgents } from "@/lib/agent_api";
 import type { DelegationChainDetail, AgentActionT, Agent } from "@/lib/agent_types";
 
+function expiryBadge(iso: string | null | undefined, expiredLabel: string, expiringLabel: string) {
+  if (!iso) return null;
+  const exp = new Date(iso).getTime();
+  const mins = (exp - Date.now()) / 60000;
+  let color = "#64748b";
+  let prefix = "";
+  if (mins < 0) { color = "#ef4444"; prefix = expiredLabel + " · "; }
+  else if (mins < 5) { color = "#f59e0b"; prefix = expiringLabel + " · "; }
+  return (
+    <div style={{ fontSize: 11, color, marginTop: 3 }}>
+      ⏱ {prefix}{new Date(iso).toLocaleString()}
+    </div>
+  );
+}
+
 export default function ChainDetailPage() {
   const params = useParams<{ id: string }>();
   const chainId = Number(params.id);
@@ -42,11 +57,11 @@ export default function ChainDetailPage() {
   }
 
   // Build the ordered node list: root agent first, then each hop's target.
-  const nodes: { agentId: number; delegated?: string[] | null; task?: string | null }[] = [
+  const nodes: { agentId: number; delegated?: string[] | null; task?: string | null; expires?: string | null }[] = [
     { agentId: chain.root_agent_id, task: chain.root_task },
   ];
   for (const hop of chain.hops) {
-    nodes.push({ agentId: hop.to_agent_id, delegated: hop.delegated_capabilities, task: hop.task_description });
+    nodes.push({ agentId: hop.to_agent_id, delegated: hop.delegated_capabilities, task: hop.task_description, expires: hop.expires_at });
   }
 
   return (
@@ -94,6 +109,7 @@ export default function ChainDetailPage() {
                     >
                       <div style={{ fontWeight: 600 }}>🤖 {nameOf(node.agentId)}</div>
                       {node.task && <div className="hint-text" style={{ fontSize: 12 }}>{node.task}</div>}
+                      {expiryBadge(node.expires, t("chains.expired", "expired") as string, t("chains.expiring", "expiring") as string)}
                       {acts.map((a) => (
                         <div key={a.id} style={{ fontSize: 12, marginTop: 4 }}>
                           {a.policy_check_result === "denied" ? "❌" : "✅"}{" "}

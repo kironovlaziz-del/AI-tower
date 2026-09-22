@@ -31,6 +31,7 @@ export interface DelegationHopT {
   depth: number;
   delegated_capabilities?: string[] | null;
   task_description?: string | null;
+  expires_at?: string | null;
   verified: boolean;
   created_at: string;
 }

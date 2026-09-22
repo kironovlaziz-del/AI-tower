@@ -120,6 +120,28 @@ class DelegationService:
                 detail=f"Capability escalation: {', '.join(escalated)} not held by delegating agent",
             )
 
+        # TTL monotonic check: a delegation can never outlive the one that
+        # authorized it. If the delegating agent's own grant expires at T,
+        # anything it delegates must expire at or before T.
+        parent_expiry = await self._expiry_of_agent_in_chain(chain.id, from_agent_id)
+        if parent_expiry is not None:
+            if expires_at is None:
+                # child left it open, but parent is time-bounded -> inherit
+                expires_at = parent_expiry
+            elif expires_at > parent_expiry:
+                await self._raise_incident(
+                    org_id, chain.id, from_agent_id, "ttl_escalation", "critical",
+                    {"requested_expiry": expires_at.isoformat(),
+                     "parent_expiry": parent_expiry.isoformat()},
+                )
+                chain.status = "violated"
+                await self.db.commit()
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"TTL escalation: delegation cannot outlive its parent "
+                           f"(requested {expires_at.isoformat()}, parent expires {parent_expiry.isoformat()})",
+                )
+
         hop = DelegationHop(
             org_id=org_id,
             chain_id=chain.id,
@@ -156,6 +178,19 @@ class DelegationService:
         if hop and hop.delegated_capabilities is not None:
             return list(hop.delegated_capabilities)
         return list(agent.capabilities or [])
+
+    async def _expiry_of_agent_in_chain(self, chain_id: int, agent_id: int):
+        """The expiry the agent holds within a chain: the expires_at of the
+        most recent hop TO it, or None if it's the root / has no time bound.
+        Used to enforce monotonic TTL shrinkage: a delegation can never
+        outlive the delegation that authorized it."""
+        result = await self.db.execute(
+            select(DelegationHop)
+            .where(DelegationHop.chain_id == chain_id, DelegationHop.to_agent_id == agent_id)
+            .order_by(DelegationHop.depth.desc())
+        )
+        hop = result.scalars().first()
+        return hop.expires_at if hop else None
 
     async def _get_chain(self, chain_id: int, org_id: int) -> DelegationChain:
         result = await self.db.execute(

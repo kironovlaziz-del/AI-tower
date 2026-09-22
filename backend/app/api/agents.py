@@ -182,6 +182,7 @@ async def delegate(
         "task": data.task,
         "delegated_capabilities": sorted(data.delegated_capabilities or []),
         "chain_id": data.chain_id,
+        "expires_in": data.expires_in,
     }
 
     # Verify signature (if provided) against the delegating agent's key.

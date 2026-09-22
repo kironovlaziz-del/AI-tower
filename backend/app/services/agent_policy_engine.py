@@ -67,6 +67,7 @@ class AgentView:
 class ChainView:
     max_depth_reached: int = 0
     granted_capabilities: List[str] = field(default_factory=list)
+    delegation_expires_at: object = None  # datetime or None; None = no time bound
 
 
 # Tools that invoke a model and therefore trigger the model-allowlist
@@ -138,6 +139,17 @@ def check_action(
     # 3. delegation depth
     if chain.max_depth_reached > agent.max_delegation_depth:
         return Decision(DENIED, "Delegation depth exceeded", "depth_exceeded")
+
+    # delegation expiry: an action can't run under a delegation that has
+    # already expired (the temporal equivalent of capability escalation).
+    if chain.delegation_expires_at is not None:
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        exp = chain.delegation_expires_at
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        if now >= exp:
+            return Decision(DENIED, "Delegation has expired", "delegation_expired")
 
     # 4. capability escalation (action must stay within the chain grant)
     escalated = escalated_items(ctx.action_capabilities, chain.granted_capabilities)

@@ -93,6 +93,7 @@ class HopOut(BaseModel):
     to_agent_id: int
     depth: int
     delegated_capabilities: Optional[List[str]]
+    expires_at: Optional[datetime] = None
     task_description: Optional[str]
     verified: bool
     created_at: datetime

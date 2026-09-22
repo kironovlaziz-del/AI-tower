@@ -51,7 +51,12 @@ class AgentAudit:
             if hop and hop.delegated_capabilities is not None
             else list(agent.capabilities or [])
         )
-        return ChainView(max_depth_reached=chain.max_depth_reached or 0, granted_capabilities=granted)
+        expiry = hop.expires_at if hop else None
+        return ChainView(
+            max_depth_reached=chain.max_depth_reached or 0,
+            granted_capabilities=granted,
+            delegation_expires_at=expiry,
+        )
 
     async def _custom_policies(self, org_id: int, agent_id: int) -> List[dict]:
         """Enabled agent policies that apply: those scoped to this agent

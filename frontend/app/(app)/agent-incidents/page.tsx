@@ -12,13 +12,14 @@ export default function AgentIncidentsPage() {
   const [summary, setSummary] = useState<EscalationSummaryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [unresolvedOnly, setUnresolvedOnly] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<string>("capability_escalation");
 
   async function load() {
     setLoading(true);
     try {
       const [inc, sum] = await Promise.all([
         listAgentIncidents({
-          incident_type: "capability_escalation",
+          incident_type: typeFilter,
           unresolved_only: unresolvedOnly,
           limit: 100,
         }),
@@ -31,7 +32,7 @@ export default function AgentIncidentsPage() {
     }
   }
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [unresolvedOnly]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [unresolvedOnly, typeFilter]);
 
   const caps = (inc: AgentIncidentT, key: string): string[] => {
     const d = (inc.details || {}) as Record<string, unknown>;
@@ -76,10 +77,18 @@ export default function AgentIncidentsPage() {
         <div className="panel">
           <div className="panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h2>{t("agent_incidents.rejected_escalations")}</h2>
-            <label className="hint-text" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-              <input type="checkbox" checked={unresolvedOnly} onChange={(e) => setUnresolvedOnly(e.target.checked)} />
-              {t("agent_incidents.unresolved_only")}
-            </label>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={{ fontSize: 13 }}>
+                <option value="capability_escalation">{t("agent_incidents.type_capability")}</option>
+                <option value="ttl_escalation">{t("agent_incidents.type_ttl")}</option>
+                <option value="delegation_expired">{t("agent_incidents.type_expired")}</option>
+                <option value="depth_exceeded">{t("agent_incidents.type_depth")}</option>
+              </select>
+              <label className="hint-text" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+                <input type="checkbox" checked={unresolvedOnly} onChange={(e) => setUnresolvedOnly(e.target.checked)} />
+                {t("agent_incidents.unresolved_only")}
+              </label>
+            </div>
           </div>
           <div style={{ overflowX: "auto" }}>
             <table>
