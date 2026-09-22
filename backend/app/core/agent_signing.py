@@ -1,3 +1,7 @@
+# Copyright (c) 2026 Laziz Kironov
+# Licensed under the Apache License, Version 2.0.
+# Part of Provenza — https://github.com/kironovlaziz-del/provenza
+
 """
 Ed25519 signing and verification for Agent-to-Agent Governance.
 
