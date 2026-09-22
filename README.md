@@ -15,8 +15,8 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
-  <a href="https://github.com/kironovlaziz-del/AI-tower/actions/workflows/ci.yml"><img src="https://github.com/kironovlaziz-del/AI-tower/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/github/stars/kironovlaziz-del/AI-tower?style=flat&color=yellow" alt="Stars">
+  <a href="https://github.com/kironovlaziz-del/provenza/actions/workflows/ci.yml"><img src="https://github.com/kironovlaziz-del/provenza/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/github/stars/kironovlaziz-del/provenza?style=flat&color=yellow" alt="Stars">
   <a href="CODE_OF_CONDUCT.md"><img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg" alt="Contributor Covenant"></a>
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
 </p>
@@ -232,8 +232,8 @@ The fastest way to see it running — the whole stack (database, backend with
 auto-migrations, workers, and frontend) in one command:
 
 ```bash
-git clone https://github.com/kironovlaziz-del/AI-tower.git
-cd AI-tower
+git clone https://github.com/kironovlaziz-del/provenza.git
+cd provenza
 docker compose -f docker-compose.full.yml up --build
 ```
 
@@ -251,8 +251,8 @@ Then open **http://localhost:3000** and log in:
 ### 1. Clone
 
 ```bash
-git clone git@github.com:kironovlaziz-del/AI-tower.git
-cd AI-tower
+git clone git@github.com:kironovlaziz-del/provenza.git
+cd provenza
 ```
 
 ### 2. Configure environment
