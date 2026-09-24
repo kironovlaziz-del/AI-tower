@@ -561,3 +561,8 @@ Bug reports, feature requests, and pull requests are welcome. Please read
 Apache License 2.0 — see [LICENSE](LICENSE).
 
 Copyright 2026 Laziz Kironov.
+
+## Featured in
+
+- [![Awesome AI Governance](https://img.shields.io/badge/Awesome-AI%20Governance-blue?logo=github)](https://github.com/agentrust-io/awesome-ai-governance)
+- [![Awesome AI Agent Governance](https://img.shields.io/badge/Awesome-AI%20Agent%20Governance-blue?logo=github)](https://github.com/systempromptio/awesome-ai-agent-governance)
