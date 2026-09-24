@@ -1,4 +1,4 @@
-# Contributing to AI Control Tower
+# Contributing to Provenza
 
 Thanks for your interest! This document explains how to file issues,
 set up a development environment, and submit changes.
@@ -30,8 +30,8 @@ By participating in this project you agree to abide by the
 ### Getting started
 
 ```bash
-git clone git@github.com:kironovlaziz-del/AI-tower.git
-cd AI-tower
+git clone git@github.com:kironovlaziz-del/provenza.git
+cd provenza
 
 # 1. Environment files
 cp .env.example .env
