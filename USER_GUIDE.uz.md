@@ -1,6 +1,6 @@
-# AI Control Tower — Administrator qo‘llanmasi
+# Provenza — Administrator qo‘llanmasi
 
-Ushbu qo‘llanma AI Control Tower platformasidan administrator sifatida
+Ushbu qo‘llanma Provenza  platformasidan administrator sifatida
 veb-interfeys orqali qanday **foydalanishni** tushuntiradi. O‘rnatish,
 joylashtirish va dasturlash uchun [README.md](README.md) ga qarang.
 

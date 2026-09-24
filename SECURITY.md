@@ -12,7 +12,7 @@ for 6 months after their release date.
 Use one of these private channels:
 
 1. GitHub's private vulnerability reporting:
-   https://github.com/kironovlaziz-del/AI-tower/security/advisories/new
+   https://github.com/kironovlaziz-del/provenza/security/advisories/new
 2. Email: `frulenhurram@gmail.com`
 
 Include in your report:
@@ -45,7 +45,7 @@ Out of scope:
 
 ## Hardening checklist for operators
 
-If you run AI Control Tower in production:
+If you run Provenza in production:
 
 - Set `ENVIRONMENT=production` — insecure defaults are rejected at startup.
 - Set a strong `SECRET_KEY` (48+ random bytes) and `ENCRYPTION_KEY` (Fernet).

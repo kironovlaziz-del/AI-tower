@@ -1,6 +1,6 @@
-# AI Control Tower — Administrator Guide
+# Provenza — Administrator Guide
 
-This guide explains how to **use** AI Control Tower from the web
+This guide explains how to **use** Provenza from the web
 interface as an administrator. For installation, deployment, and
 development, see [README.md](README.md).
 
